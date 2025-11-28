@@ -1,153 +1,262 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Category, Verdict } from '@prisma/client';
-import { SubmitDialog } from '@/components/SubmitDialog';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Category, Verdict } from "@prisma/client";
+import { SubmitDialog } from "@/components/SubmitDialog";
+import {
+  Clock,
+  HardDrive,
+  Download,
+  Upload,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Loader2,
+  FileCode,
+  Trophy,
+  ArrowUpRight,
+  Lock,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 interface Problem {
-    id: string;
-    order_index: number;
-    title: string;
-    description: string;
-    points: number;
-    time_limit_sec: number | null;
-    memory_limit_mb: number | null;
-    assets_path: string | null;
+  id: string;
+  order_index: number;
+  title: string;
+  description: string;
+  points: number;
+  time_limit_sec: number | null;
+  memory_limit_mb: number | null;
+  assets_path: string | null;
 }
 
 interface ProblemsClientProps {
-    problems: Problem[];
-    submissionMap: Record<string, Verdict>;
-    teamCategory: Category;
-    contestEndTime: Date;
+  problems: Problem[];
+  submissionMap: Record<string, Verdict>;
+  teamCategory: Category;
+  contestEndTime: Date;
 }
 
-const VERDICT_COLORS: Record<Verdict, string> = {
-    PENDING: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    ACCEPTED: 'bg-green-500/20 text-green-400 border-green-500/30',
-    REJECTED: 'bg-red-500/20 text-red-400 border-red-500/30',
-    RUNTIME_ERROR: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    COMPILE_ERROR: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
-};
-
 export function ProblemsClient({
-    problems,
-    submissionMap,
-    teamCategory,
-    contestEndTime,
+  problems,
+  submissionMap,
+  teamCategory,
+  contestEndTime,
 }: ProblemsClientProps) {
-    const router = useRouter();
-    const [selectedProblem, setSelectedProblem] = useState<string | null>(null);
+  const router = useRouter();
+  const [selectedProblem, setSelectedProblem] = useState<string | null>(null);
 
-    const handleSubmitSuccess = () => {
-        setSelectedProblem(null);
-        // CRITICAL: Refresh to show updated submission status
-        router.refresh();
-    };
+  const handleSubmitSuccess = () => {
+    setSelectedProblem(null);
+    router.refresh();
+  };
 
-    const getLetter = (index: number) => String.fromCharCode(65 + index); // A, B, C...
+  const getLetter = (index: number) => String.fromCharCode(65 + index);
 
-    return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-white mb-2">Problems</h1>
-                <p className="text-slate-400">
-                    Category: <span className="text-blue-400 font-semibold">{teamCategory}</span>
-                </p>
-            </div>
-
-            {/* Problems Grid */}
-            {problems.length === 0 ? (
-                <div className="text-center py-12 bg-slate-800 border border-slate-700 rounded-xl">
-                    <p className="text-slate-400">
-                        No problems available for your category yet.
-                    </p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {problems.map((problem) => {
-                        const verdict = submissionMap[problem.id];
-                        const letter = getLetter(problem.order_index);
-
-                        return (
-                            <div
-                                key={problem.id}
-                                className="bg-slate-800 border border-slate-700 rounded-xl p-6 hover:border-blue-500/50 transition-all"
-                            >
-                                {/* Header */}
-                                <div className="flex items-start justify-between mb-4">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className="text-2xl font-bold text-blue-400">
-                                                {letter}
-                                            </span>
-                                            {verdict && (
-                                                <span
-                                                    className={`px-2 py-1 text-xs font-semibold rounded border ${VERDICT_COLORS[verdict]}`}
-                                                >
-                                                    {verdict}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <h3 className="text-lg font-semibold text-white">
-                                            {problem.title}
-                                        </h3>
-                                    </div>
-                                    <span className="text-xl font-bold text-green-400">
-                                        {problem.points}
-                                    </span>
-                                </div>
-
-                                {/* Description */}
-                                <p className="text-slate-400 text-sm mb-4 line-clamp-3">
-                                    {problem.description}
-                                </p>
-
-                                {/* Limits */}
-                                <div className="flex gap-4 mb-4 text-xs text-slate-500">
-                                    {problem.time_limit_sec && (
-                                        <div>⏱️ {problem.time_limit_sec}s</div>
-                                    )}
-                                    {problem.memory_limit_mb && (
-                                        <div>💾 {problem.memory_limit_mb}MB</div>
-                                    )}
-                                </div>
-
-                                {/* Actions */}
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setSelectedProblem(problem.id)}
-                                        className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all font-medium"
-                                    >
-                                        Submit Solution
-                                    </button>
-                                    {problem.assets_path && (
-                                        <button
-                                            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-all"
-                                            title="Download assets"
-                                        >
-                                            📥
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-
-            {/* Submit Dialog */}
-            {selectedProblem && (
-                <SubmitDialog
-                    problemId={selectedProblem}
-                    category={teamCategory}
-                    contestEndTime={contestEndTime}
-                    onClose={() => setSelectedProblem(null)}
-                    onSuccess={handleSubmitSuccess}
-                />
-            )}
+  return (
+    <div className="space-y-8 pb-12">
+      {/* Minimalist Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
+            Problems
+            <Badge
+              variant="outline"
+              className="text-sm font-medium text-slate-500 border-slate-200"
+            >
+              {teamCategory}
+            </Badge>
+          </h1>
+          <p className="text-slate-500 mt-1">
+            Solve the tasks below to earn points.
+          </p>
         </div>
+
+        <div className="text-right hidden md:block">
+          <div className="text-2xl font-bold text-slate-900 tabular-nums">
+            {problems.length}
+          </div>
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            Available Tasks
+          </div>
+        </div>
+      </div>
+
+      {/* Grid */}
+      {problems.length === 0 ? (
+        <Card className="border-dashed border-2 bg-slate-50/50 shadow-none">
+          <CardContent className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-400">
+              <FileCode size={32} />
+            </div>
+            <h3 className="text-lg font-medium text-slate-900">
+              No problems available
+            </h3>
+            <p className="text-slate-500">Wait for the contest to begin.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {problems.map((problem) => {
+            const verdict = submissionMap[problem.id];
+            const letter = getLetter(problem.order_index);
+
+            // Status Logic (Subtle Borders)
+            const isSolved = verdict === "ACCEPTED";
+            const isFailed = verdict === "REJECTED";
+            const isPending = verdict === "PENDING";
+
+            return (
+              <Card
+                key={problem.id}
+                className={cn(
+                  "flex flex-col h-full transition-all duration-200 group border shadow-sm hover:shadow-md",
+                  isSolved
+                    ? "border-emerald-200 bg-emerald-50/30"
+                    : isFailed
+                    ? "border-red-200 bg-red-50/30"
+                    : "border-slate-200 bg-white"
+                )}
+              >
+                <CardHeader className="pb-3 pt-5">
+                  <div className="flex justify-between items-start gap-4">
+                    {/* Letter Box */}
+                    <div
+                      className={cn(
+                        "flex items-center justify-center w-10 h-10 rounded-lg text-lg font-bold shadow-sm shrink-0",
+                        isSolved
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-slate-100 text-slate-700"
+                      )}
+                    >
+                      {letter}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <h3
+                        className="font-bold text-slate-900 leading-tight truncate"
+                        title={problem.title}
+                      >
+                        {problem.title}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge
+                          variant="secondary"
+                          className="px-1.5 py-0 h-5 text-[10px] font-bold bg-slate-100 text-slate-600 border-slate-200"
+                        >
+                          {problem.points} PTS
+                        </Badge>
+                        {verdict && <VerdictText verdict={verdict} />}
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="flex-1 py-2">
+                  <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-4">
+                    {problem.description}
+                  </p>
+
+                  {/* Tech Specs */}
+                  <div className="flex items-center gap-3 text-xs font-mono text-slate-400 bg-slate-50/50 p-2 rounded border border-slate-100">
+                    <span className="flex items-center gap-1.5">
+                      <Clock size={12} /> {problem.time_limit_sec || "N/A"}s
+                    </span>
+                    <span className="w-px h-3 bg-slate-200" />
+                    <span className="flex items-center gap-1.5">
+                      <HardDrive size={12} /> {problem.memory_limit_mb || "N/A"}
+                      MB
+                    </span>
+                  </div>
+                </CardContent>
+
+                <CardFooter className="pt-2 pb-5 gap-2">
+                  <Button
+                    onClick={() => !isSolved && setSelectedProblem(problem.id)}
+                    disabled={isSolved} // <--- DISABLED IF SOLVED
+                    className={cn(
+                      "flex-1 gap-2 shadow-sm",
+                      isSolved
+                        ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 cursor-not-allowed opacity-100"
+                        : "bg-primary hover:bg-primary/90 text-white"
+                    )}
+                    variant={isSolved ? "outline" : "default"}
+                  >
+                    {isSolved ? (
+                      <>
+                        <CheckCircle2 size={16} /> Completed
+                      </>
+                    ) : (
+                      <>
+                        Submit <ArrowUpRight size={16} className="opacity-70" />
+                      </>
+                    )}
+                  </Button>
+
+                  {problem.assets_path && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="border-slate-200 text-slate-500 hover:text-primary hover:border-primary/30 hover:bg-primary/5"
+                      title="Download Input Files"
+                    >
+                      <Download size={18} />
+                    </Button>
+                  )}
+                </CardFooter>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Submission Modal */}
+      {selectedProblem && (
+        <SubmitDialog
+          problemId={selectedProblem}
+          category={teamCategory}
+          contestEndTime={contestEndTime}
+          onClose={() => setSelectedProblem(null)}
+          onSuccess={handleSubmitSuccess}
+        />
+      )}
+    </div>
+  );
+}
+
+// Minimalist Text Verdict
+function VerdictText({ verdict }: { verdict: Verdict }) {
+  if (verdict === "ACCEPTED")
+    return (
+      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">
+        Solved
+      </span>
     );
+  if (verdict === "REJECTED")
+    return (
+      <span className="text-[10px] font-bold text-red-600 uppercase tracking-wide">
+        Failed
+      </span>
+    );
+  if (verdict === "PENDING")
+    return (
+      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wide animate-pulse">
+        Pending
+      </span>
+    );
+  return (
+    <span className="text-[10px] font-bold text-orange-600 uppercase tracking-wide">
+      Error
+    </span>
+  );
 }

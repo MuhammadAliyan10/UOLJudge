@@ -1,10 +1,24 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import { Toaster } from 'sonner';
+import { Toaster } from "sonner";
+import { cn } from "@/lib/utils";
 
+// 1. Font Configuration
+// Next.js will download this at build time and serve it locally (Offline safe)
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+// 2. Metadata (SEO & Tab Title)
 export const metadata: Metadata = {
-  title: "UOLJudge - Competitive Programming Platform",
-  description: "Offline competitive programming platform for University of Lahore",
+  title: {
+    template: "%s | UOLJudge",
+    default: "UOLJudge - Competitive Programming Platform",
+  },
+  description: "Official offline competitive programming system for UOL.",
 };
 
 export default function RootLayout({
@@ -14,9 +28,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased">
+      <body
+        className={cn(
+          // 3. Force Light Mode & Base Styles
+          "min-h-screen bg-white font-sans  antialiased ",
+          inter.variable
+        )}
+      >
         {children}
-        <Toaster position="top-right" richColors />
+
+        {/* 4. Notification System (Forced Light Mode) */}
+        <Toaster
+          position="top-right"
+          theme="light"
+          richColors
+          closeButton
+        />
       </body>
     </html>
   );

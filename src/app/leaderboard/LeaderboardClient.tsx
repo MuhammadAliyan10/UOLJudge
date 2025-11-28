@@ -1,141 +1,273 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Category } from '@prisma/client';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Category } from "@prisma/client";
+import { cn } from "@/lib/utils";
+import { WifiOff, Cpu, Globe, Smartphone, Trophy } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 interface Team {
-    id: string;
-    display_name: string;
-    category: Category;
-    total_score: number;
-    total_penalty: number;
-    user: {
-        username: string;
-    };
+  id: string;
+  display_name: string;
+  username: string;
+  category: Category;
+  total_score: number;
+  solved_indexes: number[];
 }
 
 interface LeaderboardClientProps {
-    teams: Team[];
-    isFrozen: boolean;
+  teams: Team[];
+  contestName: string;
+  contestEndTime?: Date;
+  isFrozen: boolean;
+  category?: Category; // If present, view is locked
 }
 
-const CATEGORY_COLORS: Record<Category, string> = {
-    CORE: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-    WEB: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    ANDROID: 'bg-green-500/20 text-green-400 border-green-500/30',
-};
+export function LeaderboardClient({
+  teams,
+  contestName,
+  contestEndTime,
+  isFrozen,
+  category,
+}: LeaderboardClientProps) {
+  const router = useRouter();
+  const [timeRemaining, setTimeRemaining] = useState("--:--:--");
 
-const RANK_COLORS: Record<number, string> = {
-    1: 'bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border-yellow-500/50',
-    2: 'bg-gradient-to-r from-gray-400/20 to-gray-500/20 border-gray-400/50',
-    3: 'bg-gradient-to-r from-orange-600/20 to-orange-700/20 border-orange-600/50',
-};
+  const getLetter = (idx: number) => String.fromCharCode(65 + idx);
 
-export function LeaderboardClient({ teams, isFrozen }: LeaderboardClientProps) {
-    const router = useRouter();
+  // Category Icon Map
+  const CategoryIcon =
+    category === "WEB" ? Globe : category === "ANDROID" ? Smartphone : Cpu;
 
-    // Auto-refresh every 10 seconds (unless frozen)
-    useEffect(() => {
-        if (isFrozen) return;
+  useEffect(() => {
+    if (!contestEndTime) return;
 
-        const interval = setInterval(() => {
-            router.refresh();
-        }, 10000); // 10 seconds
+    const tick = () => {
+      const now = new Date();
+      const end = new Date(contestEndTime);
+      const diff = end.getTime() - now.getTime();
 
-        return () => clearInterval(interval);
-    }, [router, isFrozen]);
+      if (diff <= 0) {
+        setTimeRemaining("00:00:00");
+        return;
+      }
 
-    return (
-        <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="w-full">
-                    <thead>
-                        <tr className="bg-slate-900 border-b border-slate-700">
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                Rank
-                            </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                Team
-                            </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                Category
-                            </th>
-                            <th className="px-6 py-4 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                Score
-                            </th>
-                            <th className="px-6 py-4 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                Penalty (min)
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {teams.map((team, index) => {
-                            const rank = index + 1;
-                            const rankStyle = RANK_COLORS[rank] || '';
+      const h = Math.floor(diff / (1000 * 60 * 60));
+      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((diff % (1000 * 60)) / 1000);
 
-                            return (
-                                <tr
-                                    key={team.id}
-                                    className={`border-b border-slate-700 transition-all hover:bg-slate-700/50 ${rankStyle}`}
-                                >
-                                    {/* Rank */}
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-2xl font-bold text-white">
-                                                {rank}
-                                            </span>
-                                            {rank === 1 && <span>🥇</span>}
-                                            {rank === 2 && <span>🥈</span>}
-                                            {rank === 3 && <span>🥉</span>}
-                                        </div>
-                                    </td>
+      setTimeRemaining(
+        `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+      );
 
-                                    {/* Team Name */}
-                                    <td className="px-6 py-4">
-                                        <div className="font-semibold text-white">
-                                            {team.display_name}
-                                        </div>
-                                        <div className="text-sm text-slate-400">
-                                            {team.user.username}
-                                        </div>
-                                    </td>
+      if (!isFrozen && s % 10 === 0) {
+        router.refresh();
+      }
+    };
 
-                                    {/* Category */}
-                                    <td className="px-6 py-4">
-                                        <span
-                                            className={`px-3 py-1 text-xs font-semibold rounded-full border ${CATEGORY_COLORS[team.category]
-                                                }`}
-                                        >
-                                            {team.category}
-                                        </span>
-                                    </td>
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [contestEndTime, router, isFrozen]);
 
-                                    {/* Score */}
-                                    <td className="px-6 py-4 text-right">
-                                        <span className="text-2xl font-bold text-green-400">
-                                            {team.total_score}
-                                        </span>
-                                    </td>
-
-                                    {/* Penalty */}
-                                    <td className="px-6 py-4 text-right">
-                                        <span className="text-lg font-mono text-slate-300">
-                                            {team.total_penalty}
-                                        </span>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+  return (
+    <div className="w-full max-w-[1800px] mx-auto space-y-6 p-6">
+      {/* 1. HEADER */}
+      <Card className="bg-slate-900 border-slate-800 shadow-md overflow-hidden">
+        <div className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
+            <div className="h-14 w-14 bg-white/10 rounded-xl flex items-center justify-center border border-white/20">
+              {category ? (
+                <CategoryIcon className="text-white h-7 w-7" />
+              ) : (
+                <Trophy className="text-white h-7 w-7" />
+              )}
             </div>
 
-            {teams.length === 0 && (
-                <div className="py-12 text-center">
-                    <p className="text-slate-400">No teams registered yet.</p>
-                </div>
-            )}
+            <div>
+              <h1 className="text-3xl font-black text-white tracking-tight uppercase leading-none">
+                {category ? `${category} Standings` : contestName}
+              </h1>
+              <div className="flex items-center gap-3 mt-2">
+                {isFrozen ? (
+                  <Badge
+                    variant="destructive"
+                    className="font-mono uppercase tracking-wider px-3"
+                  >
+                    <WifiOff size={12} className="mr-1.5" /> Frozen
+                  </Badge>
+                ) : (
+                  <Badge className="bg-emerald-500 text-white hover:bg-emerald-500 border-none font-mono uppercase tracking-wider gap-2 px-3">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                    </span>
+                    Live
+                  </Badge>
+                )}
+                {!category && <span className="text-slate-500 text-sm">|</span>}
+                {!category && (
+                  <span className="text-slate-400 text-sm font-medium">
+                    All Categories
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="text-right bg-slate-800/50 px-6 py-3 rounded-lg border border-slate-700/50">
+            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+              Time Remaining
+            </div>
+            <div className="font-mono font-bold text-4xl text-white tracking-widest tabular-nums">
+              {timeRemaining}
+            </div>
+          </div>
         </div>
-    );
+
+        {/* Category Color Line */}
+        <div
+          className={cn(
+            "h-1.5 w-full",
+            category === "CORE"
+              ? "bg-purple-500"
+              : category === "WEB"
+              ? "bg-sky-500"
+              : category === "ANDROID"
+              ? "bg-emerald-500"
+              : "bg-slate-700"
+          )}
+        />
+      </Card>
+
+      {/* 2. TABLE */}
+      <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
+        <Table>
+          <TableHeader className="bg-slate-50">
+            <TableRow className="hover:bg-transparent border-b border-slate-200">
+              <TableHead className="w-24 text-center h-14 text-slate-500 font-bold uppercase tracking-wider text-sm">
+                Rank
+              </TableHead>
+              <TableHead className="h-14 text-slate-500 font-bold uppercase tracking-wider text-sm">
+                Team
+              </TableHead>
+              <TableHead className="h-14 text-slate-500 font-bold uppercase tracking-wider text-sm">
+                Solved Problems
+              </TableHead>
+              <TableHead className="w-40 text-right h-14 text-slate-500 font-bold uppercase tracking-wider text-sm">
+                Score
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {teams.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="h-64 text-center">
+                  <p className="text-xl text-slate-400 font-light">
+                    {category
+                      ? `No ${category} teams have submitted yet.`
+                      : "Waiting for submissions..."}
+                  </p>
+                </TableCell>
+              </TableRow>
+            ) : (
+              teams.map((team, index) => {
+                const rank = index + 1;
+                const isTop3 = rank <= 3;
+
+                return (
+                  <TableRow
+                    key={team.id}
+                    className={cn(
+                      "group border-b border-slate-100 transition-colors h-20",
+                      rank % 2 === 0 ? "bg-slate-50/40" : "bg-white"
+                    )}
+                  >
+                    <TableCell className="text-center">
+                      <div
+                        className={cn(
+                          "mx-auto flex items-center justify-center w-10 h-10 rounded-lg text-xl font-black",
+                          rank === 1
+                            ? "bg-yellow-100 text-yellow-700"
+                            : rank === 2
+                            ? "bg-slate-200 text-slate-700"
+                            : rank === 3
+                            ? "bg-orange-100 text-orange-800"
+                            : "text-slate-400"
+                        )}
+                      >
+                        {rank}
+                      </div>
+                    </TableCell>
+
+                    <TableCell>
+                      <div className="flex flex-col justify-center">
+                        <span
+                          className={cn(
+                            "font-bold leading-tight tracking-tight",
+                            isTop3
+                              ? "text-2xl text-slate-900"
+                              : "text-xl text-slate-700"
+                          )}
+                        >
+                          {team.display_name}
+                        </span>
+                        <span className="text-xs font-mono text-slate-400 mt-1 uppercase tracking-widest">
+                          @{team.username}
+                        </span>
+                      </div>
+                    </TableCell>
+
+                    <TableCell>
+                      <div className="flex flex-wrap gap-2">
+                        {team.solved_indexes.length > 0 ? (
+                          team.solved_indexes
+                            .sort((a, b) => a - b)
+                            .map((idx) => (
+                              <Badge
+                                key={idx}
+                                className="h-9 w-9 flex items-center justify-center rounded bg-emerald-600 hover:bg-emerald-700 text-white text-base font-bold shadow-sm border-0"
+                              >
+                                {getLetter(idx)}
+                              </Badge>
+                            ))
+                        ) : (
+                          <span className="text-slate-300 text-2xl font-light pl-2">
+                            -
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+
+                    <TableCell className="text-right">
+                      <span
+                        className={cn(
+                          "font-black tracking-tighter tabular-nums",
+                          rank === 1
+                            ? "text-4xl text-emerald-600"
+                            : "text-3xl text-slate-800"
+                        )}
+                      >
+                        {team.total_score}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </Card>
+    </div>
+  );
 }

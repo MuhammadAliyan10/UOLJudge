@@ -1,211 +1,318 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Verdict } from '@prisma/client';
-import { gradeSubmission, getSubmissionPreview } from '@/server/actions/grading';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Verdict } from "@prisma/client";
+import {
+  gradeSubmission,
+  getSubmissionPreview,
+} from "@/server/actions/grading";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
+import {
+  CheckCircle2,
+  XCircle,
+  Download,
+  Package,
+  AlertTriangle,
+  Loader2,
+  Gavel,
+} from "lucide-react";
 
 interface GradingDialogProps {
-    submission: {
-        id: string;
-        auto_score: number;
-        file_path: string;
-        problem: {
-            id: string;
-            title: string;
-            points: number;
-        };
-        user: {
-            username: string;
-            team_profile: {
-                display_name: string;
-            } | null;
-        };
+  submission: {
+    id: string;
+    auto_score: number;
+    file_path: string;
+    problem: {
+      id: string;
+      title: string;
+      points: number;
     };
+    user: {
+      username: string;
+      team_profile: {
+        display_name: string;
+      } | null;
+    };
+  };
 }
 
 export function GradingDialog({ submission }: GradingDialogProps) {
-    const router = useRouter();
-    const [isOpen, setIsOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [fileContent, setFileContent] = useState<string | null>(null);
-    const [isBinary, setIsBinary] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [manualScore, setManualScore] = useState<string>('');
-    const [juryComment, setJuryComment] = useState('');
+  const router = useRouter();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoadingFile, setIsLoadingFile] = useState(false);
+  const [isGrading, setIsGrading] = useState(false);
+  const [fileContent, setFileContent] = useState<string | null>(null);
+  const [isBinary, setIsBinary] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [manualScore, setManualScore] = useState<string>("");
+  const [juryComment, setJuryComment] = useState("");
 
-    const handleOpen = async () => {
-        setIsOpen(true);
-        setIsLoading(true);
+  const handleOpen = async () => {
+    setIsOpen(true);
+    setIsLoadingFile(true);
+    setError(null);
 
-        // Fetch file preview
-        const result = await getSubmissionPreview(submission.id);
-
-        if (result.success) {
-            if (result.isBinary) {
-                setIsBinary(true);
-            } else {
-                setFileContent(result.content || '');
-            }
+    try {
+      const result = await getSubmissionPreview(submission.id);
+      if (result.success) {
+        if (result.isBinary) {
+          setIsBinary(true);
         } else {
-            setError(result.error || 'Failed to load file');
+          setFileContent(result.content || "");
         }
+      } else {
+        setError(result.error || "Failed to load file");
+      }
+    } catch (err) {
+      setError("Network error loading file");
+    } finally {
+      setIsLoadingFile(false);
+    }
+  };
 
-        setIsLoading(false);
-    };
+  const handleGrade = async (verdict: Verdict) => {
+    setIsGrading(true);
+    setError(null);
 
-    const handleGrade = async (verdict: Verdict) => {
-        setIsLoading(true);
-        setError(null);
+    const score = manualScore ? parseInt(manualScore) : undefined;
 
-        const score = manualScore ? parseInt(manualScore) : undefined;
+    // Validation
+    if (score && (score < 0 || score > submission.problem.points)) {
+      setError(`Score must be between 0 and ${submission.problem.points}`);
+      setIsGrading(false);
+      return;
+    }
 
-        const result = await gradeSubmission(
-            submission.id,
-            verdict,
-            score,
-            juryComment || undefined
-        );
+    try {
+      const result = await gradeSubmission(
+        submission.id,
+        verdict,
+        score,
+        juryComment || undefined
+      );
 
-        if (result.success) {
-            setIsOpen(false);
-            router.refresh();
-        } else {
-            setError(result.error || 'Grading failed');
-        }
+      if (result.success) {
+        toast.success(`Submission marked as ${verdict}`);
+        setIsOpen(false);
+        router.refresh();
+      } else {
+        setError(result.error || "Grading failed");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+    } finally {
+      setIsGrading(false);
+    }
+  };
 
-        setIsLoading(false);
-    };
+  return (
+    <>
+      <Button
+        onClick={handleOpen}
+        size="sm"
+        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+      >
+        <Gavel size={16} className="mr-2" />
+        Grade
+      </Button>
 
-    return (
-        <>
-            <button
-                onClick={handleOpen}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all text-sm font-medium"
-            >
-                Grade
-            </button>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="w-[90vw]! max-w-[90vw]! h-[90vh]! flex flex-col p-0 gap-0 overflow-hidden bg-white border-slate-200 shadow-2xl rounded-xl">
+          {/* Header */}
+          <DialogHeader className="px-8 py-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
+            <div className="flex items-start justify-between">
+              <div>
+                <DialogTitle className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                  {submission.problem.title}
+                  <Badge
+                    variant="secondary"
+                    className="font-mono text-sm px-2.5"
+                  >
+                    {submission.problem.points} PTS
+                  </Badge>
+                </DialogTitle>
+                <DialogDescription className="mt-1.5 flex items-center gap-2 text-slate-500 text-sm">
+                  <span className="font-semibold text-slate-700">
+                    {submission.user.team_profile?.display_name}
+                  </span>
+                  <span className="text-slate-300">•</span>
+                  <span className="font-mono">@{submission.user.username}</span>
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
 
-            {isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    <div className="relative w-full max-w-6xl bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden">
-                        {/* Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-slate-700">
-                            <div>
-                                <h2 className="text-2xl font-bold text-white">{submission.problem.title}</h2>
-                                <p className="text-slate-400 text-sm">
-                                    {submission.user.team_profile?.display_name} ({submission.user.username})
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => setIsOpen(false)}
-                                className="text-slate-400 hover:text-white transition-colors"
-                            >
-                                ✕
-                            </button>
-                        </div>
+          {/* Main Content (Split View) */}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 overflow-hidden">
+            {/* Left: File Viewer (3/5) */}
+            <div className="lg:col-span-3 border-r border-slate-200 bg-slate-900 overflow-hidden flex flex-col relative">
+              <div className="absolute top-4 right-4 z-10">
+                <Badge
+                  variant="outline"
+                  className="bg-slate-800 text-slate-400 border-slate-700 font-mono text-xs"
+                >
+                  Read-Only Preview
+                </Badge>
+              </div>
 
-                        {/* Content */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
-                            {/* Left: File Preview */}
-                            <div>
-                                <h3 className="text-lg font-semibold text-white mb-3">Submission</h3>
-
-                                {isLoading ? (
-                                    <div className="bg-slate-950 rounded-lg p-8 text-center text-slate-400">
-                                        Loading...
-                                    </div>
-                                ) : error ? (
-                                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400">
-                                        {error}
-                                    </div>
-                                ) : isBinary ? (
-                                    <div className="bg-slate-950 rounded-lg p-8 text-center">
-                                        <div className="text-4xl mb-4">📦</div>
-                                        <p className="text-slate-400 mb-4">Binary file (zip/apk)</p>
-                                        <a
-                                            href={`/api/download/${submission.id}`}
-                                            className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all"
-                                        >
-                                            Download File
-                                        </a>
-                                    </div>
-                                ) : (
-                                    <pre className="max-h-[400px] overflow-auto p-4 bg-slate-950 text-xs text-slate-300 rounded-lg font-mono">
-                                        {fileContent}
-                                    </pre>
-                                )}
-                            </div>
-
-                            {/* Right: Grading Controls */}
-                            <div>
-                                <h3 className="text-lg font-semibold text-white mb-3">Grading</h3>
-
-                                <div className="space-y-4">
-                                    {/* Auto Score Display */}
-                                    <div className="bg-slate-900 rounded-lg p-4">
-                                        <div className="text-sm text-slate-400 mb-1">Auto Score (Base)</div>
-                                        <div className="text-2xl font-bold text-green-400">
-                                            {submission.auto_score} pts
-                                        </div>
-                                        <div className="text-xs text-slate-500 mt-1">
-                                            Max: {submission.problem.points} pts
-                                        </div>
-                                    </div>
-
-                                    {/* Manual Override */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">
-                                            Manual Score Override (Optional)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max={submission.problem.points}
-                                            value={manualScore}
-                                            onChange={(e) => setManualScore(e.target.value)}
-                                            placeholder={`Leave empty to use auto score`}
-                                            className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                                        />
-                                    </div>
-
-                                    {/* Comment */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">
-                                            Jury Comment (Optional)
-                                        </label>
-                                        <textarea
-                                            value={juryComment}
-                                            onChange={(e) => setJuryComment(e.target.value)}
-                                            placeholder="Add feedback for the team..."
-                                            rows={3}
-                                            className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500 resize-none"
-                                        />
-                                    </div>
-
-                                    {/* Verdict Buttons */}
-                                    <div className="flex gap-3 pt-4">
-                                        <button
-                                            onClick={() => handleGrade('ACCEPTED')}
-                                            disabled={isLoading}
-                                            className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            ✓ Accept
-                                        </button>
-                                        <button
-                                            onClick={() => handleGrade('REJECTED')}
-                                            disabled={isLoading}
-                                            className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            ✗ Reject
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+              {isLoadingFile ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
+                  <Loader2
+                    size={40}
+                    className="animate-spin mb-4 text-primary"
+                  />
+                  <p>Loading submission file...</p>
                 </div>
-            )}
-        </>
-    );
+              ) : error ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-red-400 p-8 text-center">
+                  <AlertTriangle size={40} className="mb-4" />
+                  <p className="font-medium text-lg">{error}</p>
+                </div>
+              ) : isBinary ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
+                  <Package size={64} className="mb-6 text-slate-600" />
+                  <h3 className="text-xl font-medium text-white mb-2">
+                    Binary File Detected
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-8 max-w-sm text-center leading-relaxed">
+                    This file format cannot be previewed directly. Please
+                    download it to inspect locally.
+                  </p>
+                  <Button
+                    asChild
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground h-12 px-8 text-base"
+                  >
+                    <a
+                      href={`/api/download/${submission.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Download size={18} className="mr-2" /> Download Artifact
+                    </a>
+                  </Button>
+                </div>
+              ) : (
+                <ScrollArea className="h-full">
+                  <pre className="p-8 text-sm font-mono text-slate-300 leading-relaxed whitespace-pre-wrap">
+                    <code>{fileContent}</code>
+                  </pre>
+                </ScrollArea>
+              )}
+            </div>
+
+            {/* Right: Controls (2/5) */}
+            <div className="lg:col-span-2 bg-white p-8 overflow-y-auto flex flex-col gap-8">
+              {/* Score Display */}
+              <div className="bg-slate-50 rounded-xl p-6 border border-slate-100">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+                  Automated Grading
+                </h4>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-slate-600">
+                    Calculated Score
+                  </span>
+                  <span className="text-3xl font-black text-primary tabular-nums">
+                    {submission.auto_score}
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-primary w-full" />
+                </div>
+                <p className="text-xs text-slate-400 mt-3 text-right font-medium">
+                  Max possible: {submission.problem.points}
+                </p>
+              </div>
+
+              {/* Manual Override */}
+              <div className="space-y-3">
+                <label className="text-sm font-semibold text-slate-900">
+                  Manual Override{" "}
+                  <span className="text-slate-400 font-normal ml-1">
+                    (Optional)
+                  </span>
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    min="0"
+                    max={submission.problem.points}
+                    value={manualScore}
+                    onChange={(e) => setManualScore(e.target.value)}
+                    placeholder="Enter custom score..."
+                    className="pl-4 pr-12 font-mono h-12 text-base"
+                  />
+                  <span className="absolute right-4 top-3.5 text-xs text-slate-400 font-bold tracking-wider">
+                    PTS
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Leave empty to accept the auto-score of{" "}
+                  <strong className="text-slate-700">
+                    {submission.auto_score}
+                  </strong>
+                  .
+                </p>
+              </div>
+
+              {/* Comments */}
+              <div className="space-y-3 flex-1">
+                <label className="text-sm font-semibold text-slate-900">
+                  Jury Feedback
+                </label>
+                <Textarea
+                  value={juryComment}
+                  onChange={(e) => setJuryComment(e.target.value)}
+                  placeholder="Explain your decision (this will be visible to the team)..."
+                  className="min-h-[150px] resize-none text-sm p-4 leading-relaxed"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="grid grid-cols-2 gap-4 mt-auto pt-6 border-t border-slate-100">
+                <Button
+                  onClick={() => handleGrade("REJECTED")}
+                  disabled={isGrading}
+                  variant="outline"
+                  className="border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 h-14 text-base font-semibold"
+                >
+                  {isGrading ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <XCircle size={20} className="mr-2" />
+                  )}
+                  Reject
+                </Button>
+
+                <Button
+                  onClick={() => handleGrade("ACCEPTED")}
+                  disabled={isGrading}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white h-14 shadow-md shadow-emerald-100 text-base font-semibold"
+                >
+                  {isGrading ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={20} className="mr-2" />
+                  )}
+                  Accept
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }

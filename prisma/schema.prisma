@@ -42,21 +42,21 @@ enum LogAction {
 
 model User {
   id            String   @id @default(uuid())
-  username      String   @unique 
+  username      String   @unique
   password_hash String
   role          UserRole @default(PARTICIPANT)
-  
-  is_active     Boolean  @default(true) 
+
+  is_active     Boolean  @default(true)
   created_at    DateTime @default(now())
 
   // Relations
-  team_profile     TeamProfile? 
+  team_profile     TeamProfile?
   submissions      Submission[]
   judged_submissions Submission[] @relation("JudgedBy")
-  
+
   sent_clarifications     Clarification[] @relation("SentBy")
   answered_clarifications Clarification[] @relation("AnsweredBy")
-  
+
   logs             SystemLog[] // Tracks what this user did
 }
 
@@ -68,8 +68,8 @@ model TeamProfile {
   display_name String   // "Team Alpha"
   members      Json     @default("[]") // ["Ali", "Sara"]
   lab_location String?  // "Lab 1, PC-05"
-  category     Category 
-  
+  category     Category
+
   // CACHING FOR FINAL RESULT PAGE
   // Instead of calculating on the fly every time, we update these
   // whenever a submission is graded.
@@ -83,10 +83,10 @@ model Contest {
   name       String
   start_time DateTime
   end_time   DateTime
-  
+
   // The Freeze Feature: Leaderboard stops updating for users after this time
-  frozen_at  DateTime? 
-  
+  frozen_at  DateTime?
+
   is_active  Boolean  @default(true)
   config     Json     @default("{}") // { "penalty_per_wrong": 20 }
 
@@ -97,47 +97,47 @@ model Contest {
 model Problem {
   id          String   @id @default(uuid())
   order_index Int      @default(0) // 0=Problem A, 1=Problem B (Sorting)
-  
+
   title       String
   description String   @db.Text
-  category    Category 
-  
+  category    Category
+
   points      Int      @default(100)
-  
+
   // Display only limits (for User info)
   time_limit_sec   Float?  @default(2.0)
   memory_limit_mb  Int?    @default(256)
 
   assets_path String?
-  
+
   contest_id  String
   contest     Contest  @relation(fields: [contest_id], references: [id])
-  
+
   submissions    Submission[]
   clarifications Clarification[]
 }
 
 model Submission {
   id        String   @id @default(uuid())
-  
+
   // File Artifacts
-  file_path String   
+  file_path String
   file_hash String   // Security: SHA256
   language  String?  // 'cpp', 'js', 'apk'
-  
+
   // Grading Logic
   verdict   Verdict  @default(PENDING)
-  
+
   // HYBRID GRADING SYSTEM
   // 1. Auto: Calculated by time (Start - Submit Time)
   // 2. Manual: Admin overrides everything
-  auto_score    Int      @default(0) 
+  auto_score    Int      @default(0)
   manual_score  Int?     // If this exists, it ignores auto_score
   final_score   Int      @default(0) // The actual value used for Leaderboard
-  
+
   // Tie-Breaker Logic
   penalty       Int      @default(0) // Time in minutes from contest start
-  
+
   submitted_at DateTime @default(now())
 
   // Relations
@@ -148,15 +148,15 @@ model Submission {
 
   judged_by_id String?
   judged_by    User?   @relation("JudgedBy", fields: [judged_by_id], references: [id])
-  
+
   jury_comment String? @db.Text
 }
 
 model Clarification {
   id        String   @id @default(uuid())
   question  String   @db.Text
-  answer    String?  @db.Text 
-  
+  answer    String?  @db.Text
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
@@ -175,7 +175,7 @@ model Announcement {
   title      String
   message    String   @db.Text
   created_at DateTime @default(now())
-  
+
   contest_id String
   contest    Contest @relation(fields: [contest_id], references: [id])
 }
@@ -186,9 +186,9 @@ model SystemLog {
   action    LogAction
   details   String   // "Admin changed score of Team A from 50 to 100"
   ip_address String?
-  
+
   timestamp DateTime @default(now())
-  
+
   user_id   String?
   user      User?    @relation(fields: [user_id], references: [id])
 }

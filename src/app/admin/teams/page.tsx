@@ -1,115 +1,167 @@
-import { db as prisma } from '@/lib/db';
+import { db as prisma } from "@/lib/db";
+import { Users } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { CreateTeamDialog } from "@/components/admin/CreateTeamDialog";
+import { TeamActions } from "@/components/admin/TeamActions";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function TeamsPage() {
-    const teams = await prisma.teamProfile.findMany({
-        include: { user: { select: { username: true, is_active: true } } },
-        orderBy: { total_score: 'desc' },
-    });
+  const teams = await prisma.teamProfile.findMany({
+    include: {
+      user: { select: { id: true, username: true, is_active: true } },
+    },
+    orderBy: [{ total_score: "desc" }, { total_penalty: "asc" }],
+  });
 
-    const CATEGORY_COLORS: Record<string, string> = {
-        CORE: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-        WEB: 'bg-blue-500/20 text-blue400 border-blue-500/30',
-        ANDROID: 'bg-green-500/20 text-green-400 border-green-500/30',
-    };
+  // Helper object for category display
+  const CATEGORY_COLORS: Record<string, string> = {
+    CORE: "bg-purple-50 text-purple-700 border-purple-200",
+    WEB: "bg-blue-50 text-blue-700 border-blue-200",
+    ANDROID: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  };
 
-    return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-white mb-2">Teams</h1>
-                <p className="text-slate-400">
-                    {teams.length} team{teams.length !== 1 ? 's' : ''} registered
-                </p>
-            </div>
-
-            {/* Teams Table */}
-            {teams.length === 0 ? (
-                <div className="bg-slate-800 border border-slate-700 rounded-xl p-12 text-center">
-                    <p className="text-slate-400">No teams registered yet</p>
-                </div>
-            ) : (
-                <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="bg-slate-900 border-b border-slate-700">
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase">
-                                        Rank
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase">
-                                        Team Name
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase">
-                                        Username
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase">
-                                        Category
-                                    </th>
-                                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-400 uppercase">
-                                        Score
-                                    </th>
-                                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-400 uppercase">
-                                        Penalty
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase">
-                                        Status
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {teams.map((team, index) => (
-                                    <tr
-                                        key={team.id}
-                                        className="border-b border-slate-700 hover:bg-slate-700/50 transition-colors"
-                                    >
-                                        <td className="px-6 py-4">
-                                            <span className="text-2xl font-bold text-white">{index + 1}</span>
-                                        </td>
-
-                                        <td className="px-6 py-4">
-                                            <div className="font-semibold text-white">{team.display_name}</div>
-                                        </td>
-
-                                        <td className="px-6 py-4 text-slate-400">{team.user.username}</td>
-
-                                        <td className="px-6 py-4">
-                                            <span
-                                                className={`px-3 py-1 text-xs font-semibold rounded border ${CATEGORY_COLORS[team.category]
-                                                    }`}
-                                            >
-                                                {team.category}
-                                            </span>
-                                        </td>
-
-                                        <td className="px-6 py-4 text-right">
-                                            <span className="text-xl font-bold text-green-400">
-                                                {team.total_score}
-                                            </span>
-                                        </td>
-
-                                        <td className="px-6 py-4 text-right text-slate-300 font-mono">
-                                            {team.total_penalty}
-                                        </td>
-
-                                        <td className="px-6 py-4">
-                                            <span
-                                                className={`px-2 py-1 text-xs font-semibold rounded ${team.user.is_active
-                                                        ? 'bg-green-500/20 text-green-400'
-                                                        : 'bg-red-500/20 text-red-400'
-                                                    }`}
-                                            >
-                                                {team.user.is_active ? 'Active' : 'Inactive'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+            Teams Overview
+          </h1>
+          <p className="text-slate-500 mt-1">
+            Monitor registered teams and status.
+          </p>
         </div>
-    );
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm">
+            <Users size={16} className="text-slate-400" />
+            <span className="font-bold text-slate-900">{teams.length}</span>
+            <span className="text-slate-500 text-sm">Teams</span>
+          </div>
+          <CreateTeamDialog />
+        </div>
+      </div>
+
+      <Card className="border-slate-200 shadow-sm overflow-hidden">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow className="hover:bg-transparent border-slate-100">
+                <TableHead className="w-[80px] text-center">Rank</TableHead>
+                <TableHead>Team Details</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead className="text-right">Score</TableHead>
+                <TableHead className="text-center w-[120px]">Status</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {teams.map((team, index) => {
+                // Construct team object for the Edit Dialog (Flattening structure)
+                const teamForEdit = {
+                  id: team.user.id,
+                  username: team.user.username,
+                  is_active: team.user.is_active,
+                  team_profile: {
+                    display_name: team.display_name,
+                    category: team.category,
+                    lab_location: team.lab_location,
+                  },
+                };
+
+                const rankStyle =
+                  index < 3
+                    ? index === 0
+                      ? "bg-yellow-50 text-yellow-800 font-bold"
+                      : index === 1
+                      ? "bg-slate-200 text-slate-700 font-bold"
+                      : "bg-orange-100 text-orange-800 font-bold"
+                    : "text-slate-500";
+
+                return (
+                  // The fix is ensuring no whitespace between TableCell tags
+                  <TableRow
+                    key={team.id}
+                    className="hover:bg-slate-50/50 group"
+                  >
+                    <TableCell className="text-center font-medium">
+                      <span
+                        className={
+                          rankStyle === "text-slate-500"
+                            ? ""
+                            : "px-3 py-1 rounded"
+                        }
+                      >
+                        {index + 1}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-slate-900">
+                          {team.display_name}
+                        </span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <code className="text-xs text-slate-500 font-mono bg-slate-100 px-1 rounded">
+                            @{team.user.username}
+                          </code>
+                          {team.lab_location && (
+                            <span className="text-[10px] text-slate-400 border border-slate-200 px-1.5 rounded">
+                              {team.lab_location}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          CATEGORY_COLORS[String(team.category) || "CORE"] || ""
+                        }
+                      >
+                        {team.category}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-bold text-slate-900">
+                      {team.total_score}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {team.user.is_active ? (
+                        <Badge
+                          variant="outline"
+                          className="bg-emerald-50 text-emerald-700 border-emerald-200"
+                        >
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="bg-red-50 text-red-700 border-red-200"
+                        >
+                          Banned
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <TeamActions team={teamForEdit} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
