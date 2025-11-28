@@ -1,7 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { db as prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { Verdict } from "@prisma/client";
+import { SubmissionStatus } from "@prisma/client";
 import {
   Table,
   TableBody,
@@ -41,12 +41,12 @@ export default async function SubmissionsPage() {
 
   // 2. Fetch Data
   const submissions = await prisma.submission.findMany({
-    where: { user_id: session.userId },
+    where: { userId: session.userId },
     include: { problem: true },
-    orderBy: { submitted_at: "desc" },
+    orderBy: { submittedAt: "desc" },
   });
 
-  const feedbackItems = submissions.filter((s) => s.jury_comment);
+  const feedbackItems = submissions.filter((s) => s.juryComment);
 
   return (
     <div className="space-y-8">
@@ -114,9 +114,7 @@ export default async function SubmissionsPage() {
                             <span className="font-semibold text-slate-900">
                               {submission.problem.title}
                             </span>
-                            <span className="text-xs text-slate-500 font-mono">
-                              {submission.language || "Unknown"}
-                            </span>
+
                           </div>
                         </TableCell>
 
@@ -126,7 +124,7 @@ export default async function SubmissionsPage() {
                             <Clock size={12} className="text-slate-400" />
                             <span className="text-xs font-medium tabular-nums">
                               {new Date(
-                                submission.submitted_at
+                                submission.submittedAt
                               ).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
@@ -137,7 +135,7 @@ export default async function SubmissionsPage() {
 
                         {/* Verdict */}
                         <TableCell className="text-right">
-                          <VerdictBadge verdict={submission.verdict} />
+                          <VerdictBadge verdict={submission.status} />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -177,11 +175,11 @@ export default async function SubmissionsPage() {
                           {s.problem.title}
                         </span>
                         <span className="text-[10px] text-slate-400">
-                          {new Date(s.submitted_at).toLocaleDateString()}
+                          {new Date(s.submittedAt).toLocaleDateString()}
                         </span>
                       </div>
                       <p className="text-sm text-slate-600 leading-relaxed bg-blue-50/50 p-3 rounded border border-blue-100/50">
-                        {s.jury_comment}
+                        {s.juryComment}
                       </p>
                     </div>
                   ))}
@@ -197,8 +195,8 @@ export default async function SubmissionsPage() {
 
 // --- Verdict Component ---
 
-function VerdictBadge({ verdict }: { verdict: Verdict }) {
-  const config: Record<Verdict, { style: string; icon: any; label: string }> = {
+function VerdictBadge({ verdict }: { verdict: SubmissionStatus }) {
+  const config: Record<SubmissionStatus, { style: string; icon: any; label: string }> = {
     ACCEPTED: {
       style:
         "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
@@ -215,17 +213,7 @@ function VerdictBadge({ verdict }: { verdict: Verdict }) {
       icon: Loader2,
       label: "Pending",
     },
-    RUNTIME_ERROR: {
-      style:
-        "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100",
-      icon: AlertTriangle,
-      label: "Runtime Error",
-    },
-    COMPILE_ERROR: {
-      style: "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200",
-      icon: AlertTriangle,
-      label: "Compile Error",
-    },
+
   };
 
   const { style, icon: Icon, label } = config[verdict];

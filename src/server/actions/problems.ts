@@ -7,6 +7,7 @@ import { getSession } from "@/lib/auth";
 import fs from "fs/promises";
 import path from "path";
 import { Category } from "@prisma/client";
+import { broadcast } from "@/lib/broadcast";
 
 // --- SCHEMA ---
 const CreateProblemSchema = z.object({
@@ -33,7 +34,7 @@ export async function createProblemAction(formData: FormData) {
 
   const result = CreateProblemSchema.safeParse(rawData);
   if (!result.success)
-    return { success: false, error: result.error.errors[0].message };
+    return { success: false, error: result.error.issues[0].message };
   const data = result.data;
 
   let assetsPath: string | null = null;
@@ -72,10 +73,10 @@ export async function createProblemAction(formData: FormData) {
   try {
     // Determine the next order index (A, B, C...)
     const lastProblem = await db.problem.findFirst({
-      where: { contest_id: data.contestId },
-      orderBy: { order_index: "desc" },
+      where: { contestId: data.contestId },
+      orderBy: { orderIndex: "desc" },
     });
-    const nextIndex = (lastProblem?.order_index ?? -1) + 1;
+    const nextIndex = (lastProblem?.orderIndex ?? -1) + 1;
 
     await db.problem.create({
       data: {
@@ -83,10 +84,16 @@ export async function createProblemAction(formData: FormData) {
         description: description,
         points: data.points,
         category: data.category,
-        contest_id: data.contestId,
-        order_index: nextIndex,
-        assets_path: assetsPath,
+        contestId: data.contestId,
+        orderIndex: nextIndex,
+        assetsPath: assetsPath,
       },
+    });
+
+    // Broadcast real-time update
+    broadcast({
+      event: 'CONTEST_UPDATE',
+      data: { action: 'problem_create', contestId: data.contestId },
     });
 
     revalidatePath("/admin/contests");
@@ -104,13 +111,23 @@ export async function deleteProblemAction(problemId: string) {
   try {
     const problem = await db.problem.findUnique({ where: { id: problemId } });
 
-    if (problem?.assets_path) {
+    if (problem?.assetsPath) {
       try {
-        await fs.unlink(problem.assets_path);
-      } catch (e) {} // Ignore file delete error
+        await fs.unlink(problem.assetsPath);
+      } catch (e) { } // Ignore file delete error
     }
 
+    const contestId = problem?.contestId;
     await db.problem.delete({ where: { id: problemId } });
+
+    // Broadcast real-time update
+    if (contestId) {
+      broadcast({
+        event: 'CONTEST_UPDATE',
+        data: { action: 'problem_delete', contestId },
+      });
+    }
+
     revalidatePath("/admin/contests");
     return { success: true };
   } catch (e) {

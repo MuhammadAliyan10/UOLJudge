@@ -27,9 +27,9 @@ export const dynamic = "force-dynamic";
 // --- Helper Component: Contest Status Badge (Remains the same) ---
 function ContestStatusBadge({ contest }: { contest: any }) {
   const now = new Date();
-  const isActive = contest.is_active;
-  const hasStarted = now >= contest.start_time;
-  const hasEnded = now > contest.end_time;
+  const isActive = contest.isActive;
+  const hasStarted = now >= contest.startTime;
+  const hasEnded = now > contest.endTime;
 
   if (!isActive) {
     return (
@@ -86,18 +86,18 @@ export default async function ContestsPage() {
     include: {
       _count: { select: { problems: true } },
       problems: {
-        orderBy: { order_index: "asc" },
+        orderBy: { orderIndex: "asc" },
         select: {
           id: true,
           title: true,
           category: true,
           points: true,
-          assets_path: true,
-          order_index: true, // Needed for problem mapping
+          assetsPath: true,
+          orderIndex: true, // Needed for problem mapping
         },
       },
     },
-    orderBy: { start_time: "desc" },
+    orderBy: { startTime: "desc" },
   });
 
   return (
@@ -139,7 +139,7 @@ export default async function ContestsPage() {
               <TableBody>
                 {contests.map((contest) => {
                   const isFrozen =
-                    contest.frozen_at && new Date() > contest.frozen_at;
+                    contest.frozenAt && new Date() > contest.frozenAt;
 
                   return (
                     <TableRow
@@ -175,9 +175,9 @@ export default async function ContestsPage() {
                       <TableCell>
                         <div className="flex flex-col gap-1 text-sm text-slate-600">
                           <div>
-                            Start: {contest.start_time.toLocaleString()}
+                            Start: {contest.startTime.toLocaleString()}
                           </div>
-                          <div>End: {contest.end_time.toLocaleString()}</div>
+                          <div>End: {contest.endTime.toLocaleString()}</div>
                         </div>
                       </TableCell>
 

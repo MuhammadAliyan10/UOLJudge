@@ -28,10 +28,10 @@ export default async function ContestLayout({
 
   // 3. Fetch Active Contest (Need ID for Leaderboard Link)
   const contest = await prisma.contest.findFirst({
-    where: { is_active: true },
+    where: { isActive: true },
     select: {
       id: true,
-      end_time: true,
+      endTime: true,
     },
   });
 
@@ -41,7 +41,7 @@ export default async function ContestLayout({
       teamScore={teamProfile.total_score}
       teamCategory={teamProfile.category} // <--- Pass Category
       contestId={contest?.id} // <--- Pass ID
-      contestEndTime={contest?.end_time}
+      contestEndTime={contest?.endTime}
     >
       {children}
     </ContestLayoutClient>

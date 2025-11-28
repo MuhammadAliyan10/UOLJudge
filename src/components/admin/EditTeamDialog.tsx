@@ -188,7 +188,7 @@ export function EditTeamDialog({
                   <FormItem>
                     <FormLabel>Lab Location</FormLabel>
                     <FormControl>
-                      <Input placeholder="Lab 1" {...field} />
+                      <Input placeholder="Lab 1" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

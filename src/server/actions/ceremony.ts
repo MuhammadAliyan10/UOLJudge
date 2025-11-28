@@ -2,22 +2,26 @@
 
 import { getSession } from '@/lib/auth';
 import { db as prisma } from '@/lib/db';
+import fs from 'fs';
+import path from 'path';
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export interface CeremonyResult {
-    success: boolean;
-    html?: string;
-    error?: string;
+  success: boolean;
+  html?: string;
+  filePath?: string;
+  error?: string;
 }
 
 interface TeamResult {
-    rank: number;
-    name: string;
-    score: number;
-    lab: string;
+  rank: number;
+  name: string;
+  score: number;
+  lab: string;
+  members: string[];
 }
 
 // ============================================================
@@ -30,61 +34,101 @@ interface TeamResult {
  * Size: <2MB, no external dependencies
  */
 export async function generateCeremonyHTML(
-    contestId: string
+  contestId: string
 ): Promise<CeremonyResult> {
-    try {
-        // 1. Verify admin/jury role
-        const session = await getSession();
+  try {
+    // 1. Verify admin/jury role
+    const session = await getSession();
 
-        if (!session || (session.role !== 'ADMIN' && session.role !== 'JURY')) {
-            return { success: false, error: 'Unauthorized' };
-        }
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'JURY')) {
+      return { success: false, error: 'Unauthorized' };
+    }
 
-        //  2. Fetch contest
-        const contest = await prisma.contest.findUnique({
-            where: { id: contestId },
-        });
+    //  2. Fetch contest
+    const contest = await prisma.contest.findUnique({
+      where: { id: contestId },
+    });
 
-        if (!contest) {
-            return { success: false, error: 'Contest not found' };
-        }
+    if (!contest) {
+      return { success: false, error: 'Contest not found' };
+    }
 
-        // 3. Fetch all teams sorted by score DESC, penalty ASC
-        const teams = await prisma.teamProfile.findMany({
-            include: { user: { select: { username: true } } },
-            orderBy: [
-                { total_score: 'desc' },
-                { total_penalty: 'asc' },
-            ],
-        });
+    // 3. Fetch all teams with TeamScore sorted by ICPC rules
+    const teamScores = await prisma.teamScore.findMany({
+      include: {
+        team: {
+          include: {
+            user: { select: { username: true } },
+          },
+        },
+      },
+      orderBy: [
+        { solvedCount: 'desc' },
+        { totalPenalty: 'asc' },
+      ],
+    });
 
-        // 4. Map to ceremony format
-        const results: TeamResult[] = teams.map((team, index) => ({
-            rank: index + 1,
-            name: team.display_name,
-            score: team.total_score,
-            lab: team.category,
-        }));
+    // 4. Map to ceremony format
+    const results: TeamResult[] = teamScores.map((score, index) => {
+      const members = Array.isArray(score.team.members)
+        ? score.team.members
+        : [];
 
-        // 5. UOL Logo (Base64 SVG placeholder - minimal size)
-        const uolLogo = `data:image/svg+xml;base64,${Buffer.from(`
+      return {
+        rank: index + 1,
+        name: score.team.display_name,
+        score: score.solvedCount,
+        lab: score.team.category,
+        members: members as string[],
+      };
+    });
+
+    // 5. UOL Logo (Base64 SVG placeholder - minimal size)
+    const uolLogo = `data:image/svg+xml;base64,${Buffer.from(`
       <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
         <circle cx="60" cy="60" r="55" fill="#1e40af" stroke="#3b82f6" stroke-width="3"/>
         <text x="60" y="70" font-family="sans-serif" font-size="36" font-weight="bold" fill="white" text-anchor="middle">UOL</text>
       </svg>
     `).toString('base64')}`;
 
-        // 6. Generate HTML
-        const html = generateHTML(contest.name, results, uolLogo);
+    // 6. Generate HTML
+    const html = generateHTML(contest.name, results, uolLogo);
 
-        return { success: true, html };
-    } catch (error) {
-        console.error('[CEREMONY] Error:', error);
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Failed to generate ceremony',
-        };
+    // 7. Save to filesystem
+    try {
+      const publicDir = path.join(process.cwd(), 'public', 'exports');
+
+      // Ensure directory exists
+      if (!fs.existsSync(publicDir)) {
+        fs.mkdirSync(publicDir, { recursive: true });
+      }
+
+      const fileName = `ceremony_${contestId}.html`;
+      const filePath = path.join(publicDir, fileName);
+
+      fs.writeFileSync(filePath, html, 'utf-8');
+
+      return {
+        success: true,
+        html,
+        filePath: `/exports/${fileName}`,
+      };
+    } catch (fsError) {
+      console.error('[CEREMONY] File save error:', fsError);
+      // Return HTML even if file save fails
+      return {
+        success: true,
+        html,
+        error: 'Generated HTML but failed to save file',
+      };
     }
+  } catch (error) {
+    console.error('[CEREMONY] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to generate ceremony',
+    };
+  }
 }
 
 // ============================================================
@@ -92,11 +136,11 @@ export async function generateCeremonyHTML(
 // ============================================================
 
 function generateHTML(
-    contestName: string,
-    results: TeamResult[],
-    logoDataUrl: string
+  contestName: string,
+  results: TeamResult[],
+  logoDataUrl: string
 ): string {
-    return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -309,17 +353,17 @@ function generateHTML(
     <!-- State 1-3: Podium -->
     <div id="podium" class="podium hidden">
       ${results.slice(0, 3).map((r, i) => {
-        const place = i + 1;
-        const medals = ['🥇', '🥈', '🥉'];
-        const classes = ['gold', 'silver', 'bronze'];
-        return `
+    const place = i + 1;
+    const medals = ['🥇', '🥈', '🥉'];
+    const classes = ['gold', 'silver', 'bronze'];
+    return `
           <div class="podium-item place-${place} ${classes[i]}" id="place-${place}">
             <div class="medal">${medals[i]}</div>
             <div class="winner-name">${r.name}</div>
             <div class="winner-score">${r.score}</div>
           </div>
         `;
-    }).join('')}
+  }).join('')}
     </div>
   </div>
 

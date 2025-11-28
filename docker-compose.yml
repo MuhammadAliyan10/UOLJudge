@@ -1,20 +1,59 @@
-version: '3.8'
+
 
 services:
-  postgres:
+  db:
     image: postgres:15-alpine
     container_name: uol_judge_db
     ports:
-      - 5435:5432
+      - "5435:5432"
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: uol0512
       POSTGRES_DB: uol_judge
     volumes:
-      - ./docker/pgdata:/var/lib/postgresql/data
+      - ./pg-data:/var/lib/postgresql/data
     restart: always
+    networks:
+      - uol-network
     deploy:
       resources:
         limits:
           cpus: '0.50'
           memory: 512M
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uol_judge_app
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://admin:uol0512@db:5432/uol_judge
+      NEXT_PUBLIC_WS_URL: ws://localhost:3001
+      NODE_ENV: production
+    depends_on:
+      - db
+    restart: always
+    networks:
+      - uol-network
+    command: node server.js
+
+  ws-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uol_judge_ws
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+    restart: always
+    networks:
+      - uol-network
+    # Run TypeScript directly using tsx
+    command: npx tsx server/ws-server.ts
+
+networks:
+  uol-network:
+    driver: bridge

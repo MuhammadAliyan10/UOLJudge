@@ -49,6 +49,35 @@ export function LeaderboardClient({
   const CategoryIcon =
     category === "WEB" ? Globe : category === "ANDROID" ? Smartphone : Cpu;
 
+  // Real-time updates via Server-Sent Events
+  useEffect(() => {
+    const eventSource = new EventSource('/api/events');
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        // Instant refresh on score updates
+        if (data.event === 'SCORE_UPDATE') {
+          console.log('[Leaderboard] Score updated - refreshing...');
+          router.refresh();
+        }
+      } catch (error) {
+        console.error('[Leaderboard] Failed to parse SSE message:', error);
+      }
+    };
+
+    eventSource.onerror = () => {
+      console.error('[Leaderboard] SSE connection error');
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [router]);
+
+  // Countdown timer (no polling - SSE handles updates)
   useEffect(() => {
     if (!contestEndTime) return;
 
@@ -69,16 +98,12 @@ export function LeaderboardClient({
       setTimeRemaining(
         `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
       );
-
-      if (!isFrozen && s % 10 === 0) {
-        router.refresh();
-      }
     };
 
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [contestEndTime, router, isFrozen]);
+  }, [contestEndTime]);
 
   return (
     <div className="w-full max-w-[1800px] mx-auto space-y-6 p-6">
@@ -142,10 +167,10 @@ export function LeaderboardClient({
             category === "CORE"
               ? "bg-purple-500"
               : category === "WEB"
-              ? "bg-sky-500"
-              : category === "ANDROID"
-              ? "bg-emerald-500"
-              : "bg-slate-700"
+                ? "bg-sky-500"
+                : category === "ANDROID"
+                  ? "bg-emerald-500"
+                  : "bg-slate-700"
           )}
         />
       </Card>
@@ -200,10 +225,10 @@ export function LeaderboardClient({
                           rank === 1
                             ? "bg-yellow-100 text-yellow-700"
                             : rank === 2
-                            ? "bg-slate-200 text-slate-700"
-                            : rank === 3
-                            ? "bg-orange-100 text-orange-800"
-                            : "text-slate-400"
+                              ? "bg-slate-200 text-slate-700"
+                              : rank === 3
+                                ? "bg-orange-100 text-orange-800"
+                                : "text-slate-400"
                         )}
                       >
                         {rank}

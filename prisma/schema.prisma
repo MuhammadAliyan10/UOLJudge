@@ -30,6 +30,17 @@ enum Verdict {
   COMPILE_ERROR // Syntax error
 }
 
+enum ProblemType {
+  PHYSICAL // Paper prompt, just upload code
+  DIGITAL  // PDF prompt, view in browser
+}
+
+enum SubmissionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 enum LogAction {
   LOGIN
   SUBMISSION
@@ -66,17 +77,49 @@ model User {
 model TeamProfile {
   id           String   @id @default(uuid())
   user_id      String   @unique
-  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade) // If User is deleted, profile is deleted
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   display_name String
   members      Json     @default("[]")
   lab_location String?
   category     Category
 
-  // CACHING FOR FINAL RESULT PAGE (O(1) read time for leaderboard)
+  // CACHING FOR FINAL RESULT PAGE
   total_score   Int      @default(0)
   total_penalty Int      @default(0)
   rank          Int?
+  is_active     Boolean  @default(true)
+  
+  // Contest Assignment - Teams assigned to specific contests
+  assigned_contest_id String?
+  assigned_contest    Contest? @relation("AssignedTeams", fields: [assigned_contest_id], references: [id], onDelete: SetNull)
+
+  // NEW: Real-time score tracking
+  team_score TeamScore?
+
+  @@index([category])
+  @@index([assigned_contest_id])
+  @@map("team_profile")
+}
+
+// NEW: ATOMIC ACCUMULATOR PATTERN - O(1) Leaderboard Reads
+// This table caches current standings to avoid expensive calculations
+model TeamScore {
+  id          String   @id @default(uuid())
+  teamId      String   @unique @map("team_id")
+  team        TeamProfile @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  // ICPC Scoring: Most Solved → Lowest Penalty
+  solvedCount  Int     @default(0) @map("solved_count")
+  totalPenalty Int     @default(0) @map("total_penalty") // Time + (20 × Rejections)
+  
+  // JSON field to track problem-specific state for O(1) lookups during grading
+  // Structure: { "problemId": { "solved": boolean, "attempts": int, "penalty": int } }
+  problemStats Json    @default("{}") @map("problem_stats")
+  
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("team_score")
 }
 
 // NEW: ISOLATION LAYER
@@ -98,35 +141,44 @@ model ContestRegistration {
 model Contest {
   id         String   @id @default(uuid())
   name       String
-  start_time DateTime
-  end_time   DateTime
+  startTime  DateTime @map("start_time")
+  endTime    DateTime @map("end_time")
 
-  frozen_at  DateTime?
-  is_active  Boolean  @default(true)
+  // CONTROL FLAGS - The "$Z$-Gate"
+  isPaused   Boolean  @default(false) @map("is_paused")      // Emergency brake - blocks ALL submissions
+  pausedAt   DateTime? @map("paused_at")                     // Timestamp when pause started (for time math)
+  isFrozen   Boolean  @default(false) @map("is_frozen")      // Leaderboard freeze - hide scores but allow submissions
+
+  // Legacy fields (backward compatible)
+  frozenAt   DateTime? @map("frozen_at")
+  isActive   Boolean  @default(true) @map("is_active")
   config     Json     @default("{}")
 
   // Relations
   problems   Problem[]                @relation("ContestProblems")
   announcements Announcement[]        @relation("ContestAnnouncements")
   registrations ContestRegistration[] // NEW: Link back to teams
+  assigned_teams TeamProfile[] @relation("AssignedTeams")
 }
 
 model Problem {
   id          String   @id @default(uuid())
-  order_index Int      @default(0)
+  orderIndex  Int      @default(0) @map("order_index")
 
   title       String
   description String   @db.Text
   category    Category
+  type        ProblemType @default(PHYSICAL)
+  contentUrl  String?  @map("content_url") // Path to PDF if DIGITAL
   points      Int      @default(100)
 
-  time_limit_sec   Float?  @default(2.0)
-  memory_limit_mb  Int?    @default(256)
+  timeLimitSec   Float?  @default(2.0) @map("time_limit_sec")
+  memoryLimitMb  Int?    @default(256) @map("memory_limit_mb")
 
-  assets_path String?
+  assetsPath String? @map("assets_path")
 
-  contest_id  String
-  contest     Contest  @relation("ContestProblems", fields: [contest_id], references: [id], onDelete: Cascade) // If contest dies, problems die
+  contestId  String  @map("contest_id")
+  contest    Contest @relation("ContestProblems", fields: [contestId], references: [id], onDelete: Cascade)
 
   submissions    Submission[]
   clarifications Clarification[]
@@ -135,29 +187,33 @@ model Problem {
 model Submission {
   id        String   @id @default(uuid())
 
-  file_path String
-  file_hash String
-  language  String?
-  verdict   Verdict  @default(PENDING)
+  fileUrl   String   @map("file_path")  // Local path: /uploads/...
+  fileHash  String   @map("file_hash")
+  fileType  String   @map("language")   // 'cpp', 'zip', 'apk'
+  status    SubmissionStatus @default(PENDING) @map("verdict")
 
-  auto_score    Int      @default(0)
-  manual_score  Int?
-  final_score   Int      @default(0)
+  // LOGIC FLAGS - The Gauntlet
+  isLatest  Boolean  @default(true) @map("is_latest")  // For efficient querying of latest submission
+  canRetry  Boolean  @default(false) @map("can_retry") // Admin override flag
 
-  penalty       Int      @default(0)
+  autoScore    Int      @default(0) @map("auto_score")
+  manualScore  Int?     @map("manual_score")
+  finalScore   Int      @default(0) @map("final_score")
 
-  submitted_at DateTime @default(now())
+  penalty      Int      @default(0)
+
+  submittedAt  DateTime @default(now()) @map("submitted_at")
 
   // Relations
-  user_id   String
-  user      User     @relation("SubmittedBy", fields: [user_id], references: [id], onDelete: Cascade) // If user dies, submissions die
-  problem_id String
-  problem    Problem @relation(fields: [problem_id], references: [id], onDelete: Cascade) // If problem dies, submissions die
+  userId    String   @map("user_id")
+  user      User     @relation("SubmittedBy", fields: [userId], references: [id], onDelete: Cascade)
+  problemId String   @map("problem_id")
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
-  judged_by_id String?
-  judged_by    User?    @relation("JudgedBy", fields: [judged_by_id], references: [id])
+  judgedById   String? @map("judged_by_id")
+  judgedBy     User?   @relation("JudgedBy", fields: [judgedById], references: [id])
 
-  jury_comment String? @db.Text
+  juryComment  String? @db.Text @map("jury_comment")
 }
 
 model Clarification {
@@ -187,18 +243,38 @@ model Announcement {
   contest    Contest @relation("ContestAnnouncements", fields: [contest_id], references: [id], onDelete: Cascade)
 }
 
-// NEW: Security Logs (The "Black Box")
+// --- SYSTEM MONITORING & CONFIGURATION ---
+
+// Dynamic Configuration Store
+// Allows admins to modify system thresholds without code changes
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique // e.g., 'RAM_LIMIT_MB', 'CPU_WARNING_THRESHOLD', 'NETWORK_SPEED_LIMIT_MBPS'
+  value       String   // Store as string, parse in application
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_setting")
+}
+
+// Enhanced Security & System Logs (The "Black Box")
 model SystemLog {
   id        String   @id @default(uuid())
+  
+  // Legacy fields (backward compatible)
   action    LogAction
   details   String
   ip_address String?
 
+  // NEW: Enhanced logging capabilities
+  level     String   @default("INFO") // 'INFO', 'WARN', 'ERROR', 'CRITICAL'
+  message   String   @default("")     // Human-readable log message
+  metadata  Json?                     // Structured data: { cpuLoad: 99, teamId: 123, etc. }
+
   timestamp DateTime @default(now())
 
-  // NEW: Link the log directly to the source of the action
+  // Relations
   submission_id String?
-
-  user_id   String?
-  user      User?    @relation(fields: [user_id], references: [id])
+  user_id       String?
+  user          User?    @relation(fields: [user_id], references: [id])
 }

@@ -9,18 +9,20 @@ import {
   ArrowRight,
   Clock,
 } from "lucide-react";
+import SystemHealthCard from "./components/SystemHealthCard";
+import HealthChartsCard from "./components/HealthChartsCard";
 
 // Server Component (Direct DB Access)
 export default async function AdminDashboard() {
   // 1. Fetch Real-Time Stats
   const activeContests = await db.contest.count({
-    where: { is_active: true },
+    where: { isActive: true },
   });
 
   const totalTeams = await db.teamProfile.count();
 
   const pendingSubmissions = await db.submission.count({
-    where: { verdict: "PENDING" },
+    where: { status: "PENDING" },
   });
 
   // 2. Fetch Recent Logs (Last 5)
@@ -48,7 +50,7 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Active Contests"
           value={activeContests}
@@ -73,6 +75,17 @@ export default async function AdminDashboard() {
           bg="bg-amber-50"
           desc="Awaiting jury grading"
         />
+        {/* System Health Monitor (Client Component) */}
+        <SystemHealthCard />
+      </div>
+
+      {/* System Health Monitoring with Charts */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Activity size={20} className="text-slate-400" />
+          <h2 className="text-xl font-semibold text-slate-800">System Health Monitoring</h2>
+        </div>
+        <HealthChartsCard />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -174,37 +187,33 @@ function ActionCard({ href, title, desc, icon: Icon, highlight }: any) {
       href={href}
       className={`
         group flex items-center gap-4 p-4 rounded-xl border transition-all duration-200
-        ${
-          highlight
-            ? "bg-amber-50 border-amber-200 hover:border-amber-300"
-            : "bg-white border-slate-200 hover:border-blue-300 hover:shadow-md"
+        ${highlight
+          ? "bg-amber-50 border-amber-200 hover:border-amber-300"
+          : "bg-white border-slate-200 hover:border-blue-300 hover:shadow-md"
         }
       `}
     >
       <div
         className={`
         p-3 rounded-lg transition-colors
-        ${
-          highlight
+        ${highlight
             ? "bg-amber-100 text-amber-700"
             : "bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600"
-        }
+          }
       `}
       >
         <Icon size={20} />
       </div>
       <div className="flex-1">
         <h4
-          className={`font-semibold ${
-            highlight ? "text-amber-900" : "text-slate-800"
-          }`}
+          className={`font-semibold ${highlight ? "text-amber-900" : "text-slate-800"
+            }`}
         >
           {title}
         </h4>
         <p
-          className={`text-sm ${
-            highlight ? "text-amber-700/80" : "text-slate-500"
-          }`}
+          className={`text-sm ${highlight ? "text-amber-700/80" : "text-slate-500"
+            }`}
         >
           {desc}
         </p>

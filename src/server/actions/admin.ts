@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { Category } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
+import { broadcast } from "@/lib/broadcast";
 
 // --- SCHEMAS (Validation Layer) ---
 
@@ -62,7 +63,7 @@ export async function createTeamAction(formData: FormData) {
 
   const result = CreateTeamSchema.safeParse(rawData);
   if (!result.success)
-    return { success: false, error: result.error.errors[0].message };
+    return { success: false, error: result.error.issues[0].message };
   const data = result.data;
 
   try {
@@ -112,7 +113,7 @@ export async function updateTeamAction(formData: FormData) {
 
   const result = UpdateTeamSchema.safeParse(rawData);
   if (!result.success)
-    return { success: false, error: result.error.errors[0].message };
+    return { success: false, error: result.error.issues[0].message };
   const data = result.data;
 
   try {
@@ -154,7 +155,7 @@ export async function deleteTeamAction(teamId: string) {
     // Transactionally delete all associated data first to avoid FK constraints
     await db.$transaction(async (tx) => {
       // 1. Clean submissions (required because submissions FK User and Problem)
-      await tx.submission.deleteMany({ where: { user_id: teamId } });
+      await tx.submission.deleteMany({ where: { userId: teamId } });
       // 2. Delete team profile (FK to User)
       await tx.teamProfile.delete({ where: { user_id: teamId } });
       // 3. Delete user account (Login)
@@ -192,18 +193,22 @@ export async function createContestAction(formData: FormData) {
 
   const result = CreateContestSchema.safeParse(rawData);
   if (!result.success)
-    return { success: false, error: result.error.errors[0].message };
+    return { success: false, error: result.error.issues[0].message };
   const data = result.data;
 
   try {
+    let createdContestId = '';
+
     await db.$transaction(async (tx) => {
       const contest = await tx.contest.create({
         data: {
           name: data.name,
-          start_time: new Date(data.startTime),
-          end_time: new Date(data.endTime),
+          startTime: new Date(data.startTime),
+          endTime: new Date(data.endTime),
         },
       });
+
+      createdContestId = contest.id;
 
       // Automated generation of problem slots (A, B, C...)
       const problemsToCreate = Array.from({ length: data.problemCount }).map(
@@ -211,13 +216,19 @@ export async function createContestAction(formData: FormData) {
           title: `Problem ${String.fromCharCode(65 + i)}`,
           description: "Please refer to the physical question paper provided.",
           category: data.category,
-          order_index: i,
+          orderIndex: i,
           points: 100,
-          contest_id: contest.id,
+          contestId: contest.id,
         })
       );
 
       await tx.problem.createMany({ data: problemsToCreate });
+    });
+
+    // Broadcast real-time update
+    broadcast({
+      event: 'CONTEST_UPDATE',
+      data: { action: 'create', contestId: createdContestId },
     });
 
     revalidatePath("/admin/contests");
@@ -227,37 +238,67 @@ export async function createContestAction(formData: FormData) {
   }
 }
 
-export async function updateContestAction(formData: FormData) {
+export async function updateContestAction(input: FormData | { id: string;[key: string]: any }) {
   const session = await getSession();
   if (session?.role !== "ADMIN")
     return { success: false, error: "Unauthorized" };
 
-  const rawData = {
-    id: formData.get("id"),
-    name: formData.get("name"),
-    startTime: formData.get("startTime"),
-    endTime: formData.get("endTime"),
-    isActive: formData.get("isActive"),
-  };
+  let contestId: string;
+  let updates: any = {};
 
-  const result = UpdateContestSchema.safeParse(rawData);
-  if (!result.success) return { success: false, error: "Invalid Data" };
-  const data = result.data;
+  if (input instanceof FormData) {
+    contestId = input.get("id") as string;
+    updates = {
+      name: input.get("name"),
+      startTime: input.get("startTime"),
+      endTime: input.get("endTime"),
+      isActive: input.get("isActive") === "true",
+    };
+  } else {
+    // Object input for partial updates (like toggle status)
+    contestId = input.id;
+    if (input.name !== undefined) updates.name = input.name;
+    if (input.startTime !== undefined) updates.startTime = input.startTime;
+    if (input.endTime !== undefined) updates.endTime = input.endTime;
+    if (input.is_active !== undefined) updates.isActive = input.is_active;
+    if (input.isActive !== undefined) updates.isActive = input.isActive;
+  }
 
   try {
-    await db.contest.update({
-      where: { id: data.id },
-      data: {
-        name: data.name,
-        start_time: new Date(data.startTime),
-        end_time: new Date(data.endTime),
-        is_active: data.isActive,
-      },
+    // Fetch existing contest to merge with updates
+    const existingContest = await db.contest.findUnique({
+      where: { id: contestId },
     });
+
+    if (!existingContest) {
+      return { success: false, error: "Contest not found" };
+    }
+
+    // Build update data
+    const updateData: any = {};
+
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.startTime !== undefined) updateData.startTime = new Date(updates.startTime);
+    if (updates.endTime !== undefined) updateData.endTime = new Date(updates.endTime);
+    if (updates.isActive !== undefined) updateData.isActive = updates.isActive;
+
+    await db.contest.update({
+      where: { id: contestId },
+      data: updateData,
+    });
+
+    // Broadcast real-time update
+    console.log('[updateContestAction] Broadcasting CONTEST_UPDATE for:', contestId);
+    broadcast({
+      event: 'CONTEST_UPDATE',
+      data: { action: 'update', contestId },
+    });
+    console.log('[updateContestAction] Broadcast sent');
 
     revalidatePath("/admin/contests");
     return { success: true };
   } catch (e) {
+    console.error('[updateContestAction] Error:', e);
     return { success: false, error: "Failed to update contest" };
   }
 }
@@ -272,17 +313,17 @@ export async function deleteContestAction(contestId: string) {
     await db.$transaction(async (tx) => {
       // 1. Delete submissions related to problems in this contest
       const problems = await tx.problem.findMany({
-        where: { contest_id: contestId },
+        where: { contestId: contestId },
         select: { id: true },
       });
       const problemIds = problems.map((p) => p.id);
 
       await tx.submission.deleteMany({
-        where: { problem_id: { in: problemIds } },
+        where: { problemId: { in: problemIds } },
       });
 
       // 2. Delete problems
-      await tx.problem.deleteMany({ where: { contest_id: contestId } });
+      await tx.problem.deleteMany({ where: { contestId: contestId } });
 
       // 3. Delete announcements
       await tx.announcement.deleteMany({ where: { contest_id: contestId } });
@@ -323,7 +364,7 @@ export async function extendContestTime(
     }
 
     // Determine the current effective end time (either the past time, or the future time)
-    const currentEndTime = new Date(contest.end_time);
+    const currentEndTime = new Date(contest.endTime);
     const newEndTime = new Date(
       currentEndTime.getTime() + minutesToAdd * 60000
     ); // Add minutes in milliseconds
@@ -331,10 +372,16 @@ export async function extendContestTime(
     await db.contest.update({
       where: { id: contestId },
       data: {
-        end_time: newEndTime,
-        is_active: true, // Ensure it becomes active again if it was manually set to false
+        endTime: newEndTime,
+        isActive: true, // Ensure it becomes active again if it was manually set to false
         // Optional: clear frozen_at time if a massive extension is granted
       },
+    });
+
+    // Broadcast real-time update
+    broadcast({
+      event: 'CONTEST_UPDATE',
+      data: { action: 'time_extended', contestId },
     });
 
     // Revalidate the Contests list and the specific Leaderboard page

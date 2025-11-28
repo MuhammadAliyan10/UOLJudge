@@ -103,7 +103,7 @@ export function ManageProblemsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-white border-slate-200 max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-5xl! bg-white border-slate-200 max-h-[85vh]! overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Manage Problems: {contestName}</DialogTitle>
           <DialogDescription>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Verdict } from "@prisma/client";
+import { SubmissionStatus } from "@prisma/client";
 import {
   gradeSubmission,
   getSubmissionPreview,
@@ -33,8 +33,8 @@ import {
 interface GradingDialogProps {
   submission: {
     id: string;
-    auto_score: number;
-    file_path: string;
+    autoScore: number;
+    fileUrl: string;
     problem: {
       id: string;
       title: string;
@@ -83,7 +83,7 @@ export function GradingDialog({ submission }: GradingDialogProps) {
     }
   };
 
-  const handleGrade = async (verdict: Verdict) => {
+  const handleGrade = async (verdict: "ACCEPTED" | "REJECTED") => {
     setIsGrading(true);
     setError(null);
 
@@ -109,7 +109,7 @@ export function GradingDialog({ submission }: GradingDialogProps) {
         setIsOpen(false);
         router.refresh();
       } else {
-        setError(result.error || "Grading failed");
+        setError(result.message || "Grading failed");
       }
     } catch (err) {
       setError("An unexpected error occurred");
@@ -225,7 +225,7 @@ export function GradingDialog({ submission }: GradingDialogProps) {
                     Calculated Score
                   </span>
                   <span className="text-3xl font-black text-primary tabular-nums">
-                    {submission.auto_score}
+                    {submission.autoScore}
                   </span>
                 </div>
                 <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
@@ -261,7 +261,7 @@ export function GradingDialog({ submission }: GradingDialogProps) {
                 <p className="text-xs text-slate-500">
                   Leave empty to accept the auto-score of{" "}
                   <strong className="text-slate-700">
-                    {submission.auto_score}
+                    {submission.autoScore}
                   </strong>
                   .
                 </p>

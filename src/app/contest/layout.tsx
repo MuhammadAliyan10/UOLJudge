@@ -57,7 +57,7 @@ export default async function ContestLayout({
   // 3. Fetch The CORRECT Active Contest
   const contest = await prisma.contest.findFirst({
     where: {
-      is_active: true,
+      isActive: true,
       problems: {
         some: {
           category: teamProfile.category,
@@ -66,8 +66,8 @@ export default async function ContestLayout({
     },
     select: {
       id: true,
-      end_time: true,
-      start_time: true,
+      endTime: true,
+      startTime: true,
     },
   });
 
@@ -84,12 +84,12 @@ export default async function ContestLayout({
     );
   }
 
-  if (now < contest.start_time) {
-    const startTimeString = contest.start_time.toLocaleTimeString([], {
+  if (now < contest.startTime) {
+    const startTimeString = contest.startTime.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
     });
-    const startDateString = contest.start_time.toLocaleDateString();
+    const startDateString = contest.startTime.toLocaleDateString();
 
     return (
       <ContestStatusScreen
@@ -100,7 +100,7 @@ export default async function ContestLayout({
     );
   }
 
-  if (now > contest.end_time) {
+  if (now > contest.endTime) {
     return (
       <ContestStatusScreen
         title="Contest Ended"
@@ -117,7 +117,7 @@ export default async function ContestLayout({
       teamScore={0} // <--- Score is now set to 0 (hidden)
       teamCategory={teamProfile.category}
       contestId={contest.id}
-      contestEndTime={contest.end_time}
+      contestEndTime={contest.endTime}
     >
       {children}
     </ContestLayoutClient>

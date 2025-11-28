@@ -57,8 +57,8 @@ export function ContestLayoutClient({
     teamCategory === "WEB"
       ? Globe
       : teamCategory === "ANDROID"
-      ? Smartphone
-      : Cpu;
+        ? Smartphone
+        : Cpu;
 
   // ---------------------------------------------------
   // A. TIMER LOGIC (1-second update)
@@ -99,17 +99,70 @@ export function ContestLayoutClient({
   }, [contestEndTime, router, isEndingSoon]);
 
   // ---------------------------------------------------
-  // B. POLLING LOGIC (60-second layout refresh)
+  // B. REAL-TIME SSE UPDATES (Instant admin changes)
   // ---------------------------------------------------
   useEffect(() => {
-    // This ensures changes made by the Admin (like freezing the board or changing name)
-    // are visible to participants without them clicking refresh.
-    const pollInterval = setInterval(() => {
-      console.log("Polling layout for administrative changes...");
-      router.refresh();
-    }, 60000); // Poll every 60 seconds
+    let eventSource: EventSource | null = null;
+    let reconnectTimeout: NodeJS.Timeout;
 
-    return () => clearInterval(pollInterval);
+    const connect = () => {
+      try {
+        const timestamp = new Date().toLocaleTimeString();
+        console.log(`[Contest ${timestamp}] Connecting to SSE at /api/events`);
+        eventSource = new EventSource('/api/events');
+
+        eventSource.onopen = () => {
+          const timestamp = new Date().toLocaleTimeString();
+          console.log(`%c[Contest ${timestamp}] ✅ SSE CONNECTED`, 'color: green; font-weight: bold');
+        };
+
+        eventSource.onmessage = (event) => {
+          const timestamp = new Date().toLocaleTimeString();
+          try {
+            const data = JSON.parse(event.data);
+            console.log(`%c[Contest ${timestamp}] 📨 SSE Message:`, 'color: blue; font-weight: bold', data);
+
+            // Instant refresh on contest/problem updates
+            if (data.event === 'CONTEST_UPDATE') {
+              console.log(`%c[Contest ${timestamp}] 🔄 CONTEST UPDATE - Refreshing page...`, 'color: orange; font-weight: bold');
+              router.refresh();
+            }
+
+            if (data.event === 'SCORE_UPDATE') {
+              console.log(`%c[Contest ${timestamp}] 🔄 SCORE UPDATE - Refreshing page...`, 'color: purple; font-weight: bold');
+              router.refresh();
+            }
+          } catch (error) {
+            console.error(`[Contest ${timestamp}] ❌ Failed to parse SSE message:`, error);
+          }
+        };
+
+        eventSource.onerror = (error) => {
+          const timestamp = new Date().toLocaleTimeString();
+          console.error(`%c[Contest ${timestamp}] ❌ SSE ERROR:`, 'color: red; font-weight: bold', error);
+          eventSource?.close();
+
+          // Auto-reconnect after 3 seconds
+          console.log(`[Contest ${timestamp}] ⏳ Reconnecting in 3 seconds...`);
+          reconnectTimeout = setTimeout(connect, 3000);
+        };
+      } catch (error) {
+        const timestamp = new Date().toLocaleTimeString();
+        console.error(`[Contest ${timestamp}] ❌ Failed to create SSE:`, error);
+        // Retry connection
+        reconnectTimeout = setTimeout(connect, 3000);
+      }
+    };
+
+    // Initial connection
+    connect();
+
+    return () => {
+      const timestamp = new Date().toLocaleTimeString();
+      console.log(`[Contest ${timestamp}] 🧹 Cleaning up SSE connection`);
+      eventSource?.close();
+      clearTimeout(reconnectTimeout);
+    };
   }, [router]);
 
   const handleLogout = async () => {

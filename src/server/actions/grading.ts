@@ -1,210 +1,292 @@
-'use server';
+"use server";
 
-import { getSession } from '@/lib/auth';
-import { db as prisma } from '@/lib/db';
-import { revalidatePath, revalidateTag } from 'next/cache';
-import { Verdict } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
+import { broadcastContestUpdate } from "@/lib/ws-broadcast";
+import { SubmissionStatus } from "@prisma/client";
 
-// ============================================================
-// TYPES
-// ============================================================
+/**
+ * Grading Engine - Atomic Accumulator Pattern
+ * ICPC Scoring: Most Solved → Lowest Penalty
+ * Penalty = Time (minutes) + (20 × Wrong Attempts)
+ */
 
-export interface GradingResult {
+interface GradingResponse {
     success: boolean;
-    error?: string;
+    message: string;
 }
 
-export interface FilePreviewResult {
+interface ProblemStat {
+    solved: boolean;
+    attempts: number;
+    penalty: number;
+}
+
+type ProblemStatsMap = Record<string, ProblemStat>;
+
+/**
+ * Grade Submission - The Atomic Accumulator
+ * 
+ * Updates submission status AND TeamScore in a single transaction
+ * Implements ICPC scoring logic with O(1) leaderboard reads
+ * 
+ * @param submissionId - ID of the submission to grade
+ * @param status - ACCEPTED or REJECTED
+ * @param manualScore - Optional manual score override (for old GradingDialog compatibility)
+ * @param juryComment - Optional jury feedback comment
+ */
+export async function gradeSubmission(
+    submissionId: string,
+    status: "ACCEPTED" | "REJECTED",
+    manualScore?: number,
+    juryComment?: string
+): Promise<GradingResponse> {
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            // ============================================================
+            // STEP 1: Fetch Submission Data
+            // ============================================================
+            const submission = await tx.submission.findUnique({
+                where: { id: submissionId },
+                include: {
+                    problem: {
+                        include: {
+                            contest: true,
+                        },
+                    },
+                    user: {
+                        include: {
+                            team_profile: true,
+                        },
+                    },
+                },
+            });
+
+            if (!submission) {
+                throw new Error("Submission not found");
+            }
+
+            if (!submission.user.team_profile) {
+                throw new Error("Team profile not found");
+            }
+
+            const teamId = submission.user.team_profile.id;
+            const problemId = submission.problemId;
+            const contestStartTime = submission.problem.contest.startTime;
+
+            // ============================================================
+            // STEP 2: Get or Create TeamScore
+            // ============================================================
+            let teamScore = await tx.teamScore.findUnique({
+                where: { teamId },
+            });
+
+            if (!teamScore) {
+                teamScore = await tx.teamScore.create({
+                    data: {
+                        teamId,
+                        solvedCount: 0,
+                        totalPenalty: 0,
+                        problemStats: {},
+                    },
+                });
+            }
+
+            const problemStats = (teamScore.problemStats as unknown as ProblemStatsMap) || {};
+            const currentProblemStat = problemStats[problemId] || {
+                solved: false,
+                attempts: 0,
+                penalty: 0,
+            };
+
+            // ============================================================
+            // STEP 3: Calculate Submission Time (in minutes)
+            // ============================================================
+            const submissionTime = submission.submittedAt;
+            const elapsedMs = submissionTime.getTime() - contestStartTime.getTime();
+            const timeInMinutes = Math.floor(elapsedMs / 60000);
+
+            // ============================================================
+            // STEP 4: Update Scores Based on Status
+            // ============================================================
+            let newSolvedCount = teamScore.solvedCount;
+            let newTotalPenalty = teamScore.totalPenalty;
+
+            if (status === "ACCEPTED") {
+                // Check if already solved (idempotency)
+                if (currentProblemStat.solved) {
+                    // Already solved, just update submission status
+                    await tx.submission.update({
+                        where: { id: submissionId },
+                        data: {
+                            status: SubmissionStatus.ACCEPTED,
+                            manualScore: manualScore,
+                            juryComment: juryComment,
+                        },
+                    });
+
+                    return {
+                        teamScore,
+                        submission,
+                        message: "Problem already solved - no score change",
+                    };
+                }
+
+                // NEW SOLVE!
+                // Calculate penalty: Time + (20 × Previous Rejections)
+                const problemPenalty = timeInMinutes + (currentProblemStat.attempts * 20);
+
+                // Update stats
+                newSolvedCount += 1;
+                newTotalPenalty += problemPenalty;
+
+                // Update problem stats
+                problemStats[problemId] = {
+                    solved: true,
+                    attempts: currentProblemStat.attempts + 1,
+                    penalty: problemPenalty,
+                };
+            } else {
+                // REJECTED
+                // Just increment attempts, don't add to penalty yet (only counts if solved)
+                problemStats[problemId] = {
+                    ...currentProblemStat,
+                    attempts: currentProblemStat.attempts + 1,
+                };
+            }
+
+            // ============================================================
+            // STEP 5: Atomic Update - Submission + TeamScore
+            // ============================================================
+            const [updatedSubmission, updatedTeamScore] = await Promise.all([
+                tx.submission.update({
+                    where: { id: submissionId },
+                    data: {
+                        status: status === "ACCEPTED" ? SubmissionStatus.ACCEPTED : SubmissionStatus.REJECTED,
+                        manualScore: manualScore,
+                        juryComment: juryComment,
+                    },
+                }),
+                tx.teamScore.update({
+                    where: { teamId },
+                    data: {
+                        solvedCount: newSolvedCount,
+                        totalPenalty: newTotalPenalty,
+                        problemStats: problemStats as any,
+                    },
+                }),
+            ]);
+
+            // ============================================================
+            // STEP 6: Create System Log
+            // ============================================================
+            await tx.systemLog.create({
+                data: {
+                    action: "MANUAL_GRADE_UPDATE",
+                    level: status === "ACCEPTED" ? "INFO" : "WARN",
+                    message: `Graded submission: ${status}`,
+                    details: `Team: ${submission.user.team_profile.display_name}, Problem: ${submission.problem.title}`,
+                    user_id: submission.userId,
+                    submission_id: submissionId,
+                    metadata: {
+                        problemId,
+                        status,
+                        solvedCount: newSolvedCount,
+                        totalPenalty: newTotalPenalty,
+                        teamId,
+                        manualScore,
+                    },
+                },
+            });
+
+            return {
+                submission: updatedSubmission,
+                teamScore: updatedTeamScore,
+                teamName: submission.user.team_profile.display_name,
+                problemTitle: submission.problem.title,
+                message: status === "ACCEPTED"
+                    ? `Accepted! Solved: ${newSolvedCount}, Penalty: ${newTotalPenalty}`
+                    : "Rejected - attempts incremented",
+            };
+        });
+
+        // ============================================================
+        // STEP 7: WebSocket Broadcasts (After Transaction Success)
+        // ============================================================
+        // Notify admin dashboard (remove from pending)
+        await broadcastContestUpdate("ADMIN_UPDATE", {
+            action: "SUBMISSION_GRADED",
+            submissionId,
+            status,
+        });
+
+        // Notify leaderboard (update scores)
+        await broadcastContestUpdate("LEADERBOARD_UPDATE", {
+            teamId: result.teamScore.teamId,
+            solvedCount: result.teamScore.solvedCount,
+            totalPenalty: result.teamScore.totalPenalty,
+        });
+
+        return {
+            success: true,
+            message: result.message,
+        };
+    } catch (error) {
+        console.error("Error grading submission:", error);
+        return {
+            success: false,
+            message: error instanceof Error ? error.message : "Failed to grade submission",
+        };
+    }
+}
+
+/**
+ * Get Submission Preview
+ * Reads file content for preview in grading dialog
+ */
+export async function getSubmissionPreview(submissionId: string): Promise<{
     success: boolean;
     content?: string;
     isBinary?: boolean;
     error?: string;
-}
-
-// ============================================================
-// READ SUBMISSION FILE (FOR PREVIEW)
-// ============================================================
-
-export async function getSubmissionPreview(
-    submissionId: string
-): Promise<FilePreviewResult> {
+}> {
     try {
-        const session = await getSession();
-
-        if (!session || (session.role !== 'ADMIN' && session.role !== 'JURY')) {
-            return { success: false, error: 'Unauthorized' };
-        }
-
         const submission = await prisma.submission.findUnique({
             where: { id: submissionId },
         });
 
         if (!submission) {
-            return { success: false, error: 'Submission not found' };
+            return { success: false, error: "Submission not found" };
         }
 
-        // Check if binary
-        const ext = submission.file_path.split('.').pop()?.toLowerCase();
-        const isBinary = ext === 'zip' || ext === 'apk';
+        // Read file from disk
+        const fs = await import("fs/promises");
+        const path = await import("path");
 
-        if (isBinary) {
-            return { success: true, isBinary: true };
+        // Handle both absolute and relative paths
+        let filePath = submission.fileUrl;
+        if (!path.isAbsolute(filePath)) {
+            filePath = path.join(process.cwd(), "public", filePath);
         }
 
-        // Read text file securely
         try {
-            const { promises: fs } = await import('fs');
-            const path = await import('path');
-
-            // Security: Ensure file is in storage directory
-            const storagePath = path.join(process.cwd(), 'storage');
-            const absolutePath = path.resolve(submission.file_path);
-
-            if (!absolutePath.startsWith(storagePath)) {
-                return { success: false, error: 'Access denied: File outside storage directory' };
-            }
-
-            const content = await fs.readFile(absolutePath, 'utf-8');
-            return { success: true, content, isBinary: false };
+            const content = await fs.readFile(filePath, "utf-8");
+            return {
+                success: true,
+                content,
+                isBinary: false,
+            };
         } catch (error) {
-            return { success: false, error: 'File not found or unreadable' };
+            // If UTF-8 fails, it's likely binary
+            return {
+                success: true,
+                isBinary: true,
+            };
         }
     } catch (error) {
-        console.error('[PREVIEW] Error:', error);
-        return { success: false, error: 'Failed to read file' };
-    }
-}
-
-// ============================================================
-// GRADE SUBMISSION (WITH ICPC PENALTIES)
-// ============================================================
-
-/**
- * Grade a submission and update team scores transactionally
- * ICPC Rules: 20 minute penalty for each previous REJECTED submission
- */
-export async function gradeSubmission(
-    submissionId: string,
-    verdict: Verdict,
-    manualScore?: number,
-    juryComment?: string
-): Promise<GradingResult> {
-    try {
-        // 1. Verify admin/jury role
-        const session = await getSession();
-
-        if (!session || (session.role !== 'ADMIN' && session.role !== 'JURY')) {
-            return { success: false, error: 'Unauthorized' };
-        }
-
-        // 2. Use transaction for atomic updates
-        await prisma.$transaction(async (tx) => {
-            // Fetch submission with related data
-            const submission = await tx.submission.findUnique({
-                where: { id: submissionId },
-                include: {
-                    problem: { include: { contest: true } },
-                    user: { include: { team_profile: true } },
-                },
-            });
-
-            if (!submission) {
-                throw new Error('Submission not found');
-            }
-
-            // Validate manual score
-            if (manualScore !== undefined && manualScore > submission.problem.points) {
-                throw new Error('Manual score exceeds problem points');
-            }
-
-            // 3. Calculate ICPC-style penalty
-            let penalty = 0;
-
-            if (verdict === 'ACCEPTED') {
-                // Base penalty: time from contest start
-                const contestStart = submission.problem.contest.start_time;
-                const submissionTime = submission.submitted_at;
-                const elapsedMs = submissionTime.getTime() - contestStart.getTime();
-                const baseMinutes = Math.floor(elapsedMs / 60000);
-
-                // Count previous REJECTED submissions for THIS problem by THIS user
-                const previousRejections = await tx.submission.count({
-                    where: {
-                        user_id: submission.user_id,
-                        problem_id: submission.problem_id,
-                        verdict: 'REJECTED',
-                        submitted_at: { lt: submission.submitted_at },
-                    },
-                });
-
-                // ICPC Rule: Add 20 minutes per previous rejection
-                penalty = baseMinutes + (previousRejections * 20);
-            }
-
-            // 4. Calculate final score
-            const finalScore = verdict === 'ACCEPTED'
-                ? (manualScore ?? submission.auto_score)
-                : 0;
-
-            // 5. Update submission (use judged_by_id, no judged_at in schema)
-            await tx.submission.update({
-                where: { id: submissionId },
-                data: {
-                    verdict,
-                    final_score: finalScore,
-                    penalty,
-                    judged_by_id: session.userId,
-                    jury_comment: juryComment || null,
-                },
-            });
-
-            // 6. Recalculate team totals
-            const allAcceptedSubmissions = await tx.submission.findMany({
-                where: {
-                    user_id: submission.user_id,
-                    verdict: 'ACCEPTED',
-                },
-            });
-
-            const totalScore = allAcceptedSubmissions.reduce(
-                (sum: number, s) => sum + s.final_score, 0
-            );
-
-            const totalPenalty = allAcceptedSubmissions.reduce(
-                (sum: number, s) => sum + s.penalty, 0
-            );
-
-            // 7. Update team profile
-            await tx.teamProfile.update({
-                where: { user_id: submission.user_id },
-                data: {
-                    total_score: totalScore,
-                    total_penalty: totalPenalty,
-                },
-            });
-
-            // 8. Create audit log
-            await tx.systemLog.create({
-                data: {
-                    action: 'MANUAL_GRADE_UPDATE',
-                    details: `Graded ${submission.user.team_profile?.display_name || 'Team'} on ${submission.problem.title}: ${verdict} (${finalScore} pts, ${penalty} min penalty)`,
-                    user_id: session.userId,
-                },
-            });
-        });
-
-        // 9. Revalidate affected pages
-        revalidatePath('/leaderboard', 'page');
-        revalidatePath('/admin/grading', 'page');
-        revalidatePath('/contest/problems', 'page');
-        revalidatePath('/contest/submissions', 'page');
-
-        return { success: true };
-    } catch (error) {
-        console.error('[GRADING] Error:', error);
+        console.error("Error reading submission file:", error);
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Grading failed',
+            error: error instanceof Error ? error.message : "Failed to read file",
         };
     }
-}
+};

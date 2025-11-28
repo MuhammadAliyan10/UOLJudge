@@ -26,8 +26,8 @@ export default async function ContestLeaderboardPage({ params }: PageProps) {
         where: { id: cId },
         include: {
           problems: {
-            select: { id: true, order_index: true, category: true },
-            orderBy: { order_index: "asc" },
+            select: { id: true, orderIndex: true, category: true },
+            orderBy: { orderIndex: "asc" },
           },
         },
       });
@@ -47,10 +47,10 @@ export default async function ContestLeaderboardPage({ params }: PageProps) {
             include: {
               submissions: {
                 where: {
-                  verdict: "ACCEPTED",
-                  problem: { contest_id: cId },
+                  status: "ACCEPTED",
+                  problem: { contestId: cId },
                 },
-                select: { problem_id: true },
+                select: { problemId: true },
               },
             },
           },
@@ -59,12 +59,12 @@ export default async function ContestLeaderboardPage({ params }: PageProps) {
 
       const formattedTeams = teams.map((team) => {
         const solvedProblemIds = new Set(
-          team.user.submissions.map((s) => s.problem_id)
+          team.user.submissions.map((s) => s.problemId)
         );
 
         const solvedIndexes = contest.problems
           .filter((p) => solvedProblemIds.has(p.id))
-          .map((p) => p.order_index);
+          .map((p) => p.orderIndex);
 
         const contestScore = contest.problems
           .filter((p) => solvedProblemIds.has(p.id))
@@ -100,13 +100,13 @@ export default async function ContestLeaderboardPage({ params }: PageProps) {
   if (!data) return notFound();
 
   const { teams, contest } = data;
-  const isFrozen = contest.frozen_at ? new Date() > contest.frozen_at : false;
+  const isFrozen = contest.frozenAt ? new Date() > contest.frozenAt : false;
 
   return (
     <LeaderboardClient
       teams={teams}
       contestName={contest.name}
-      contestEndTime={contest.end_time}
+      contestEndTime={contest.endTime}
       isFrozen={isFrozen}
     />
   );

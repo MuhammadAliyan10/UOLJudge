@@ -32,14 +32,14 @@ export default async function GradingPage() {
 
   // 2. Data Fetching
   const submissions = await prisma.submission.findMany({
-    where: { verdict: "PENDING" },
+    where: { status: "PENDING" },
     include: {
       user: {
         include: { team_profile: true },
       },
       problem: true,
     },
-    orderBy: { submitted_at: "desc" },
+    orderBy: { submittedAt: "desc" },
   });
 
   return (
@@ -111,7 +111,7 @@ export default async function GradingPage() {
                       <div className="flex items-center gap-2 text-slate-600">
                         <Clock size={14} className="text-slate-400" />
                         <span className="text-xs font-medium font-mono">
-                          {getTimeAgo(submission.submitted_at)}
+                          {getTimeAgo(submission.submittedAt)}
                         </span>
                       </div>
                     </TableCell>
@@ -140,7 +140,7 @@ export default async function GradingPage() {
 
                     <TableCell className="text-right">
                       <span className="font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-sm">
-                        {submission.auto_score}
+                        {submission.autoScore}
                       </span>
                     </TableCell>
 

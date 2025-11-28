@@ -40,7 +40,7 @@ export async function GET(
 
         // 3. Security: Ensure file is in storage directory
         const storagePath = path.join(process.cwd(), 'storage');
-        const absolutePath = path.resolve(submission.file_path);
+        const absolutePath = path.resolve(submission.fileUrl);
 
         if (!absolutePath.startsWith(storagePath)) {
             return NextResponse.json(
@@ -67,7 +67,7 @@ export async function GET(
         }
 
         // 5. Get filename
-        const filename = path.basename(submission.file_path);
+        const filename = path.basename(submission.fileUrl);
 
         // 6. Create read stream and return file
         const fileStream = createReadStream(absolutePath);

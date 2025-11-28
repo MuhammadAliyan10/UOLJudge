@@ -112,7 +112,7 @@ export function SubmitDialog({
         onSuccess();
         onClose();
       } else {
-        toast.error(result.error || "Submission failed");
+        toast.error(result.message || "Submission failed");
       }
     } catch (error) {
       toast.error("Network error occurred");
@@ -151,8 +151,8 @@ export function SubmitDialog({
                 file
                   ? "border-emerald-500 bg-emerald-50/50"
                   : error
-                  ? "border-red-300 bg-red-50"
-                  : "border-slate-300 hover:border-primary hover:bg-slate-50"
+                    ? "border-red-300 bg-red-50"
+                    : "border-slate-300 hover:border-primary hover:bg-slate-50"
               )}
             >
               <input

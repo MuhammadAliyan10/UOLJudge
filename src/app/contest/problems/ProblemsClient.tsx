@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Category, Verdict } from "@prisma/client";
+import { Category, SubmissionStatus } from "@prisma/client";
 import { SubmitDialog } from "@/components/SubmitDialog";
 import {
   Clock,
@@ -31,18 +31,18 @@ import { cn } from "@/lib/utils";
 
 interface Problem {
   id: string;
-  order_index: number;
+  orderIndex: number;
   title: string;
   description: string;
   points: number;
-  time_limit_sec: number | null;
-  memory_limit_mb: number | null;
-  assets_path: string | null;
+  timeLimitSec: number | null;
+  memoryLimitMb: number | null;
+  assetsPath: string | null;
 }
 
 interface ProblemsClientProps {
   problems: Problem[];
-  submissionMap: Record<string, Verdict>;
+  submissionMap: Record<string, SubmissionStatus>;
   teamCategory: Category;
   contestEndTime: Date;
 }
@@ -109,7 +109,7 @@ export function ProblemsClient({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {problems.map((problem) => {
             const verdict = submissionMap[problem.id];
-            const letter = getLetter(problem.order_index);
+            const letter = getLetter(problem.orderIndex);
 
             // Status Logic (Subtle Borders)
             const isSolved = verdict === "ACCEPTED";
@@ -124,8 +124,8 @@ export function ProblemsClient({
                   isSolved
                     ? "border-emerald-200 bg-emerald-50/30"
                     : isFailed
-                    ? "border-red-200 bg-red-50/30"
-                    : "border-slate-200 bg-white"
+                      ? "border-red-200 bg-red-50/30"
+                      : "border-slate-200 bg-white"
                 )}
               >
                 <CardHeader className="pb-3 pt-5">
@@ -170,11 +170,11 @@ export function ProblemsClient({
                   {/* Tech Specs */}
                   <div className="flex items-center gap-3 text-xs font-mono text-slate-400 bg-slate-50/50 p-2 rounded border border-slate-100">
                     <span className="flex items-center gap-1.5">
-                      <Clock size={12} /> {problem.time_limit_sec || "N/A"}s
+                      <Clock size={12} /> {problem.timeLimitSec || "N/A"}s
                     </span>
                     <span className="w-px h-3 bg-slate-200" />
                     <span className="flex items-center gap-1.5">
-                      <HardDrive size={12} /> {problem.memory_limit_mb || "N/A"}
+                      <HardDrive size={12} /> {problem.memoryLimitMb || "N/A"}
                       MB
                     </span>
                   </div>
@@ -203,14 +203,21 @@ export function ProblemsClient({
                     )}
                   </Button>
 
-                  {problem.assets_path && (
+                  {problem.assetsPath && (
                     <Button
                       variant="outline"
-                      size="icon"
-                      className="border-slate-200 text-slate-500 hover:text-primary hover:border-primary/30 hover:bg-primary/5"
-                      title="Download Input Files"
+                      size="sm"
+                      className="gap-2"
+                      asChild
                     >
-                      <Download size={18} />
+                      <a
+                        href={`/api/problems/assets/${problem.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Download size={14} />
+                        View PDF
+                      </a>
                     </Button>
                   )}
                 </CardFooter>
@@ -235,7 +242,7 @@ export function ProblemsClient({
 }
 
 // Minimalist Text Verdict
-function VerdictText({ verdict }: { verdict: Verdict }) {
+function VerdictText({ verdict }: { verdict: SubmissionStatus }) {
   if (verdict === "ACCEPTED")
     return (
       <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">

@@ -13,8 +13,10 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CreateTeamDialog } from "@/components/admin/CreateTeamDialog";
 import { TeamActions } from "@/components/admin/TeamActions";
+import { BulkImportDialog } from "@/components/admin/BulkImportDialog";
+import { CeremonyExportButton } from "@/components/admin/CeremonyExportButton";
 import { unstable_cache } from "next/cache";
-import AdminTableRefresher from "@/components/admin/refreshTable/AdminTableRefresher"; // Assume this new component is created
+import AdminTableRefresher from "@/components/admin/refreshTable/AdminTableRefresher";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +47,15 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default async function TeamsPage() {
   const teams = await getTeamData();
 
+  // Fetch contests for bulk import
+  const contests = await prisma.contest.findMany({
+    select: { id: true, name: true },
+    orderBy: { startTime: "desc" },
+  });
+
+  // Get the most recent contest for ceremony export
+  const recentContest = contests[0];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -62,6 +73,13 @@ export default async function TeamsPage() {
             <span className="font-bold text-slate-900">{teams.length}</span>
             <span className="text-slate-500 text-sm">Teams</span>
           </div>
+          {recentContest && (
+            <CeremonyExportButton
+              contestId={recentContest.id}
+              contestName={recentContest.name}
+            />
+          )}
+          <BulkImportDialog contests={contests} />
           <CreateTeamDialog />
         </div>
       </div>
@@ -69,7 +87,7 @@ export default async function TeamsPage() {
       <Card className="border-slate-200 shadow-sm overflow-hidden">
         <CardContent className="p-0">
           {/* Inject the Client Refresher Component */}
-          <AdminTableRefresher tags={["admin_teams"]} interval={15000}>
+          <AdminTableRefresher interval={15000}>
             <Table>
               <TableHeader className="bg-slate-50/50">
                 <TableRow className="hover:bg-transparent border-slate-100">
@@ -101,8 +119,8 @@ export default async function TeamsPage() {
                       ? index === 0
                         ? "bg-yellow-50 text-yellow-800 font-bold"
                         : index === 1
-                        ? "bg-slate-200 text-slate-700 font-bold"
-                        : "bg-orange-100 text-orange-800 font-bold"
+                          ? "bg-slate-200 text-slate-700 font-bold"
+                          : "bg-orange-100 text-orange-800 font-bold"
                       : "text-slate-500";
 
                   return (

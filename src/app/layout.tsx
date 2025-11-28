@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+// import { Inter } from "next/font/google"; // Disabled for offline/docker build stability
 import "./globals.css";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 
 // 1. Font Configuration
-// Next.js will download this at build time and serve it locally (Offline safe)
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
+// Using system fonts to avoid network dependency during Docker build
+// const inter = Inter({
+//   subsets: ["latin"],
+//   variable: "--font-inter",
+//   display: "swap",
+// });
 
 // 2. Metadata (SEO & Tab Title)
 export const metadata: Metadata = {
@@ -31,8 +31,8 @@ export default function RootLayout({
       <body
         className={cn(
           // 3. Force Light Mode & Base Styles
-          "min-h-screen bg-white font-sans  antialiased ",
-          inter.variable
+          "min-h-screen bg-white font-sans antialiased",
+          // inter.variable
         )}
       >
         {children}
