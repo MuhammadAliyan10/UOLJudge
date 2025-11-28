@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: uol_judge_db
+    ports:
+      - 5435:5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: uol0512
+      POSTGRES_DB: uol_judge
+    volumes:
+      - ./docker/pgdata:/var/lib/postgresql/data
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
