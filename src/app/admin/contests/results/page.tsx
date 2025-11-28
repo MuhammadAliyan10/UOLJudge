@@ -92,7 +92,7 @@ export default function CeremonyResultsPage() {
             <CardContent className="p-6 space-y-6">
               {/* Input Group */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                <label className="block text-sm font-medium text-slate-700 flex items-center gap-1.5">
                   <Hash size={14} className="text-slate-400" />
                   Contest UUID
                 </label>
@@ -102,7 +102,7 @@ export default function CeremonyResultsPage() {
                     value={contestId}
                     onChange={(e) => setContestId(e.target.value)}
                     placeholder="e.g. 123e4567-e89b-12d3-a456-426614174000"
-                    className="w-full pl-4 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono text-sm"
+                    className="w-full pl-4 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-mono text-sm"
                   />
                 </div>
                 <p className="text-xs text-slate-500 flex items-center gap-1">
@@ -123,7 +123,7 @@ export default function CeremonyResultsPage() {
                   "w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-semibold transition-all shadow-sm",
                   isGenerating || !contestId
                     ? "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
-                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 hover:shadow-blue-300 hover:-translate-y-0.5 active:translate-y-0"
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-blue-200/50 hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0"
                 )}
               >
                 {isGenerating ? (

@@ -36,6 +36,8 @@ enum LogAction {
   MANUAL_GRADE_UPDATE
   BAN_USER
   CONTEST_UPDATE
+  // ADDED: RESTORE_SCORE (For logging undo actions)
+  RESTORE_SCORE
 }
 
 // --- MODELS ---
@@ -46,13 +48,14 @@ model User {
   password_hash String
   role          UserRole @default(PARTICIPANT)
 
-  is_active     Boolean  @default(true)
+  is_active     Boolean  @default(true) // Used for banning/suspension
   created_at    DateTime @default(now())
 
-  // Relations
+  // Relations (User is the center of all activity)
   team_profile     TeamProfile?
-  submissions      Submission[]
-  judged_submissions Submission[] @relation("JudgedBy")
+  submissions      Submission[]        @relation("SubmittedBy") // Submissions made by this user
+  judged_submissions Submission[]        @relation("JudgedBy")   // Submissions judged by this user
+  contest_registrations ContestRegistration[] // NEW: Enrollment link
 
   sent_clarifications     Clarification[] @relation("SentBy")
   answered_clarifications Clarification[] @relation("AnsweredBy")
@@ -63,20 +66,34 @@ model User {
 model TeamProfile {
   id           String   @id @default(uuid())
   user_id      String   @unique
-  user         User     @relation(fields: [user_id], references: [id])
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade) // If User is deleted, profile is deleted
 
-  display_name String   // "Team Alpha"
-  members      Json     @default("[]") // ["Ali", "Sara"]
-  lab_location String?  // "Lab 1, PC-05"
+  display_name String
+  members      Json     @default("[]")
+  lab_location String?
   category     Category
 
-  // CACHING FOR FINAL RESULT PAGE
-  // Instead of calculating on the fly every time, we update these
-  // whenever a submission is graded.
+  // CACHING FOR FINAL RESULT PAGE (O(1) read time for leaderboard)
   total_score   Int      @default(0)
-  total_penalty Int      @default(0) // Time taken in minutes
-  rank          Int?     // Final position (calculated at end)
+  total_penalty Int      @default(0)
+  rank          Int?
 }
+
+// NEW: ISOLATION LAYER
+// Ensures a team is explicitly linked to a contest and guards against contest deletion
+model ContestRegistration {
+  id          String   @id @default(uuid())
+  user_id     String
+  contest_id  String
+  registered_at DateTime @default(now())
+
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  contest     Contest  @relation(fields: [contest_id], references: [id], onDelete: Restrict) // PREVENTS CONTEST DELETE IF TEAMS ARE REGISTERED
+
+  @@unique([user_id, contest_id])
+  @@map("ContestRegistration")
+}
+
 
 model Contest {
   id         String   @id @default(uuid())
@@ -84,34 +101,32 @@ model Contest {
   start_time DateTime
   end_time   DateTime
 
-  // The Freeze Feature: Leaderboard stops updating for users after this time
   frozen_at  DateTime?
-
   is_active  Boolean  @default(true)
-  config     Json     @default("{}") // { "penalty_per_wrong": 20 }
+  config     Json     @default("{}")
 
-  problems   Problem[]
-  announcements Announcement[]
+  // Relations
+  problems   Problem[]                @relation("ContestProblems")
+  announcements Announcement[]        @relation("ContestAnnouncements")
+  registrations ContestRegistration[] // NEW: Link back to teams
 }
 
 model Problem {
   id          String   @id @default(uuid())
-  order_index Int      @default(0) // 0=Problem A, 1=Problem B (Sorting)
+  order_index Int      @default(0)
 
   title       String
   description String   @db.Text
   category    Category
-
   points      Int      @default(100)
 
-  // Display only limits (for User info)
   time_limit_sec   Float?  @default(2.0)
   memory_limit_mb  Int?    @default(256)
 
   assets_path String?
 
   contest_id  String
-  contest     Contest  @relation(fields: [contest_id], references: [id])
+  contest     Contest  @relation("ContestProblems", fields: [contest_id], references: [id], onDelete: Cascade) // If contest dies, problems die
 
   submissions    Submission[]
   clarifications Clarification[]
@@ -120,34 +135,27 @@ model Problem {
 model Submission {
   id        String   @id @default(uuid())
 
-  // File Artifacts
   file_path String
-  file_hash String   // Security: SHA256
-  language  String?  // 'cpp', 'js', 'apk'
-
-  // Grading Logic
+  file_hash String
+  language  String?
   verdict   Verdict  @default(PENDING)
 
-  // HYBRID GRADING SYSTEM
-  // 1. Auto: Calculated by time (Start - Submit Time)
-  // 2. Manual: Admin overrides everything
   auto_score    Int      @default(0)
-  manual_score  Int?     // If this exists, it ignores auto_score
-  final_score   Int      @default(0) // The actual value used for Leaderboard
+  manual_score  Int?
+  final_score   Int      @default(0)
 
-  // Tie-Breaker Logic
-  penalty       Int      @default(0) // Time in minutes from contest start
+  penalty       Int      @default(0)
 
   submitted_at DateTime @default(now())
 
   // Relations
   user_id   String
-  user      User     @relation(fields: [user_id], references: [id])
+  user      User     @relation("SubmittedBy", fields: [user_id], references: [id], onDelete: Cascade) // If user dies, submissions die
   problem_id String
-  problem    Problem @relation(fields: [problem_id], references: [id])
+  problem    Problem @relation(fields: [problem_id], references: [id], onDelete: Cascade) // If problem dies, submissions die
 
   judged_by_id String?
-  judged_by    User?   @relation("JudgedBy", fields: [judged_by_id], references: [id])
+  judged_by    User?    @relation("JudgedBy", fields: [judged_by_id], references: [id])
 
   jury_comment String? @db.Text
 }
@@ -161,15 +169,14 @@ model Clarification {
   updated_at DateTime @updatedAt
 
   problem_id String?
-  problem    Problem? @relation(fields: [problem_id], references: [id])
+  problem    Problem? @relation(fields: [problem_id], references: [id], onDelete: SetNull) // Clarification can exist without problem
 
   user_id   String
-  user      User   @relation("SentBy", fields: [user_id], references: [id])
+  user      User   @relation("SentBy", fields: [user_id], references: [id], onDelete: Cascade)
   answered_by_id String?
   answered_by    User?   @relation("AnsweredBy", fields: [answered_by_id], references: [id])
 }
 
-// NEW: Broadcast messages to all users
 model Announcement {
   id         String   @id @default(uuid())
   title      String
@@ -177,17 +184,20 @@ model Announcement {
   created_at DateTime @default(now())
 
   contest_id String
-  contest    Contest @relation(fields: [contest_id], references: [id])
+  contest    Contest @relation("ContestAnnouncements", fields: [contest_id], references: [id], onDelete: Cascade)
 }
 
 // NEW: Security Logs (The "Black Box")
 model SystemLog {
   id        String   @id @default(uuid())
   action    LogAction
-  details   String   // "Admin changed score of Team A from 50 to 100"
+  details   String
   ip_address String?
 
   timestamp DateTime @default(now())
+
+  // NEW: Link the log directly to the source of the action
+  submission_id String?
 
   user_id   String?
   user      User?    @relation(fields: [user_id], references: [id])

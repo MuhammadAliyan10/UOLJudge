@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Loader2 } from "lucide-react";
-import { Category } from "@prisma/client"; // Assumed import
+import { Category } from "@prisma/client";
 
 // --- Schema Definition ---
 const formSchema = z.object({
@@ -58,14 +58,14 @@ export function CreateTeamDialog() {
       username: "",
       password: "",
     },
-    // Prevent strict validation on unmounted fields for clean UX
+    // Enforce validation on blur for clean UX
     mode: "onBlur",
   });
 
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
 
-    // Convert RHF object to FormData for Server Action
+    // Convert RHF validated object to FormData for Server Action
     const formData = new FormData();
     formData.append("displayName", values.displayName);
     formData.append("labLocation", values.labLocation || "");
@@ -92,7 +92,7 @@ export function CreateTeamDialog() {
           <Plus size={16} /> New Team
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] bg-white border-slate-200">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-white border-slate-200">
         <DialogHeader>
           <DialogTitle>Register New Team</DialogTitle>
         </DialogHeader>

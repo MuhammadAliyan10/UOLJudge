@@ -2,9 +2,11 @@ import { getSession } from "@/lib/auth";
 import { db as prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { ContestLayoutClient } from "./ContestLayoutClient";
-import { AlertTriangle, Clock, CalendarOff } from "lucide-react"; // Added icons for display
+import { AlertTriangle, Clock, CalendarOff } from "lucide-react";
 
-// --- Helper Component for Inactive/Scheduled States (Rendered by Server) ---
+export const dynamic = "force-dynamic";
+
+// --- Helper Component for Inactive/Scheduled/Ended States (Rendered by Server) ---
 function ContestStatusScreen({
   title,
   message,
@@ -32,16 +34,18 @@ export default async function ContestLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // 1. Auth Check
   const session = await getSession();
   if (!session || session.role !== "PARTICIPANT") {
     redirect("/login");
   }
 
+  // 2. Fetch Team Profile
   const teamProfile = await prisma.teamProfile.findUnique({
     where: { user_id: session.userId },
     select: {
       display_name: true,
-      total_score: true,
+      // REMOVED: total_score
       category: true,
     },
   });
@@ -50,7 +54,7 @@ export default async function ContestLayout({
     redirect("/login");
   }
 
-  // Fetch the CORRECT Contest details
+  // 3. Fetch The CORRECT Active Contest
   const contest = await prisma.contest.findFirst({
     where: {
       is_active: true,
@@ -63,16 +67,13 @@ export default async function ContestLayout({
     select: {
       id: true,
       end_time: true,
-      start_time: true, // <--- CRITICAL: Need start time for check
-      name: true, // Optional: for display purposes
+      start_time: true,
     },
   });
 
   const now = new Date();
 
   // --- STATE CHECK LOGIC ---
-
-  // State 1: No Contest Found (Setup Error)
   if (!contest) {
     return (
       <ContestStatusScreen
@@ -83,7 +84,6 @@ export default async function ContestLayout({
     );
   }
 
-  // State 2: Contest Is Scheduled but Not Started
   if (now < contest.start_time) {
     const startTimeString = contest.start_time.toLocaleTimeString([], {
       hour: "2-digit",
@@ -100,12 +100,11 @@ export default async function ContestLayout({
     );
   }
 
-  // State 3: Contest Ended
   if (now > contest.end_time) {
     return (
       <ContestStatusScreen
         title="Contest Ended"
-        message="The submission window is now closed. Thank you for participating! Check the leaderboard for final results."
+        message="The submission window is now closed. Thank you for your participation! You may view the final results on the leaderboard."
         icon={AlertTriangle}
       />
     );
@@ -115,7 +114,7 @@ export default async function ContestLayout({
   return (
     <ContestLayoutClient
       teamName={teamProfile.display_name}
-      teamScore={teamProfile.total_score}
+      teamScore={0} // <--- Score is now set to 0 (hidden)
       teamCategory={teamProfile.category}
       contestId={contest.id}
       contestEndTime={contest.end_time}

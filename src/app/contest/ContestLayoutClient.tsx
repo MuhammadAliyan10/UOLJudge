@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation"; // Ensure useRouter is imported
 import { logoutAction } from "@/server/actions/auth";
 import {
   Trophy,
@@ -13,6 +13,7 @@ import {
   Cpu,
   Globe,
   Smartphone,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,8 +24,8 @@ interface ContestLayoutClientProps {
   teamName: string;
   teamScore: number;
   contestEndTime?: Date;
-  teamCategory: Category; // <--- Received
-  contestId?: string; // <--- Received
+  teamCategory: Category;
+  contestId?: string;
   children: React.ReactNode;
 }
 
@@ -37,22 +38,21 @@ export function ContestLayoutClient({
   children,
 }: ContestLayoutClientProps) {
   const pathname = usePathname();
+  const router = useRouter(); // Ensure router is initialized
   const [timeRemaining, setTimeRemaining] = useState("--:--:--");
   const [isEndingSoon, setIsEndingSoon] = useState(false);
 
-  // Dynamic Navigation
+  // Dynamic Navigation (remains same)
   const navigation = [
     { name: "Problems", href: "/contest/problems", icon: FileCode },
     { name: "My Submissions", href: "/contest/submissions", icon: History },
     {
       name: "Leaderboard",
-      // If contest exists, link to specific leaderboard. Else global.
       href: contestId ? `/leaderboard/${contestId}` : "/leaderboard",
       icon: ListTodo,
     },
   ];
 
-  // Category Icon Logic
   const CategoryIcon =
     teamCategory === "WEB"
       ? Globe
@@ -60,6 +60,9 @@ export function ContestLayoutClient({
       ? Smartphone
       : Cpu;
 
+  // ---------------------------------------------------
+  // A. TIMER LOGIC (1-second update)
+  // ---------------------------------------------------
   useEffect(() => {
     if (!contestEndTime) return;
 
@@ -71,6 +74,8 @@ export function ContestLayoutClient({
       if (diff <= 0) {
         setTimeRemaining("00:00:00");
         setIsEndingSoon(false);
+        // CRITICAL: Force a final refresh if contest ends to apply time-lock immediately
+        if (!isEndingSoon) router.refresh();
         return;
       }
 
@@ -91,7 +96,21 @@ export function ContestLayoutClient({
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [contestEndTime]);
+  }, [contestEndTime, router, isEndingSoon]);
+
+  // ---------------------------------------------------
+  // B. POLLING LOGIC (60-second layout refresh)
+  // ---------------------------------------------------
+  useEffect(() => {
+    // This ensures changes made by the Admin (like freezing the board or changing name)
+    // are visible to participants without them clicking refresh.
+    const pollInterval = setInterval(() => {
+      console.log("Polling layout for administrative changes...");
+      router.refresh();
+    }, 60000); // Poll every 60 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [router]);
 
   const handleLogout = async () => {
     toast.loading("Signing out...");
@@ -130,7 +149,6 @@ export function ContestLayoutClient({
                   <Link
                     key={item.name}
                     href={item.href}
-                    // Leaderboard link opens in new tab so they don't lose context
                     target={item.name === "Leaderboard" ? "_blank" : undefined}
                     className={cn(
                       "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200",
@@ -151,16 +169,18 @@ export function ContestLayoutClient({
 
             {/* Stats */}
             <div className="flex items-center gap-4 md:gap-6">
+              {/* Score Badge (HIDDEN/NEUTRAL) */}
               <div className="flex flex-col items-end md:items-center">
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                  Score
+                  Status
                 </span>
-                <div className="flex items-center gap-1.5 font-bold text-emerald-600">
-                  <Trophy size={14} />
-                  <span className="text-lg leading-none">{teamScore}</span>
+                <div className="flex items-center gap-1.5 font-bold text-slate-600">
+                  <Shield size={14} />
+                  <span className="text-sm leading-none">In Play</span>
                 </div>
               </div>
 
+              {/* Timer Badge */}
               {contestEndTime && (
                 <div
                   className={cn(
@@ -191,6 +211,7 @@ export function ContestLayoutClient({
 
               <div className="h-8 w-px bg-slate-200 mx-1 hidden sm:block" />
 
+              {/* User Profile */}
               <div className="flex items-center gap-4">
                 <div className="hidden md:block text-right">
                   <div className="text-sm font-bold text-slate-900">
