@@ -22,7 +22,7 @@ export default function ContestNotStarted({
                 <CardContent className="p-8 md:p-12 text-center">
                     <div className="mb-8 relative">
                         <div className="mx-auto w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mb-6">
-                            <CalendarClock size={40} className="text-blue-600" />
+                            <CalendarClock size={40} className="text-primary" />
                         </div>
                     </div>
 

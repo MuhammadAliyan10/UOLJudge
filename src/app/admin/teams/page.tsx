@@ -102,7 +102,7 @@ export default async function TeamsPage() {
               </Button>
             </div>
 
-            <div className="flex items-center gap-3 text-xs text-slate-500 font-mono">
+            <div className="flex items-center gap-3 text-xs text-slate-500 ">
               <Users size={14} className="text-slate-400" />
               <span>REGISTERED: <strong className="text-slate-900">{teams.length}</strong></span>
             </div>
@@ -146,7 +146,7 @@ export default async function TeamsPage() {
                       >
                         <TableCell className="text-center py-4 align-middle">
                           <div className={cn(
-                            "inline-flex items-center justify-center w-6 h-6 rounded font-mono text-xs font-bold",
+                            "inline-flex items-center justify-center w-6 h-6 rounded  text-xs font-bold",
                             index === 0 ? "bg-amber-100 text-amber-700" :
                               index === 1 ? "bg-slate-200 text-slate-700" :
                                 index === 2 ? "bg-orange-100 text-orange-800" :
@@ -162,7 +162,7 @@ export default async function TeamsPage() {
                             </span>
                             <div className="flex items-center gap-1.5">
                               <Hash size={10} className="text-slate-400" />
-                              <code className="text-[10px] text-slate-500 font-mono">
+                              <code className="text-[10px] text-slate-500 ">
                                 {team.user.username}
                               </code>
                             </div>
@@ -189,7 +189,7 @@ export default async function TeamsPage() {
                           <Badge
                             variant="outline"
                             className={cn(
-                              "rounded-sm font-mono text-[10px] tracking-wide px-1.5 py-0.5 uppercase",
+                              "rounded-sm  text-[10px] tracking-wide px-1.5 py-0.5 uppercase",
                               CATEGORY_STYLES[String(team.category) || "CORE"] || "bg-slate-50 text-slate-500 border-slate-200"
                             )}
                           >
@@ -197,7 +197,7 @@ export default async function TeamsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right py-4 align-middle">
-                          <span className="font-mono font-bold text-slate-900">
+                          <span className="font-bold text-slate-900">
                             {team.total_score}
                           </span>
                         </TableCell>

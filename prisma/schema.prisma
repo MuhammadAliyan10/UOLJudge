@@ -11,8 +11,8 @@ datasource db {
 
 // --- ENUMS ---
 enum UserRole {
-  ADMIN       // Full Access
-  JURY        // Can Grade & View Logs
+  ADMIN // Full Access
+  JURY // Can Grade & View Logs
   PARTICIPANT // Restricted View
 }
 
@@ -32,7 +32,7 @@ enum Verdict {
 
 enum ProblemType {
   PHYSICAL // Paper prompt, just upload code
-  DIGITAL  // PDF prompt, view in browser
+  DIGITAL // PDF prompt, view in browser
 }
 
 enum SubmissionStatus {
@@ -59,25 +59,26 @@ model User {
   password_hash String
   role          UserRole @default(PARTICIPANT)
 
-  is_active     Boolean  @default(true) // Used for banning/suspension
-  created_at    DateTime @default(now())
+  is_active  Boolean  @default(true) // Used for banning/suspension
+  created_at DateTime @default(now())
 
   // Relations (User is the center of all activity)
-  team_profile     TeamProfile?
-  submissions      Submission[]        @relation("SubmittedBy") // Submissions made by this user
-  judged_submissions Submission[]        @relation("JudgedBy")   // Submissions judged by this user
+  team_profile          TeamProfile?
+  submissions           Submission[]          @relation("SubmittedBy") // Submissions made by this user
+  judged_submissions    Submission[]          @relation("JudgedBy") // Submissions judged by this user
   contest_registrations ContestRegistration[] // NEW: Enrollment link
 
   sent_clarifications     Clarification[] @relation("SentBy")
   answered_clarifications Clarification[] @relation("AnsweredBy")
 
   logs             SystemLog[] // Tracks what this user did
+  jury_assignments JuryAssignment[] @relation("JuryAssignments") // JURY: Contests assigned to this jury member
 }
 
 model TeamProfile {
-  id           String   @id @default(uuid())
-  user_id      String   @unique
-  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id      String @id @default(uuid())
+  user_id String @unique
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   display_name String
   members      Json     @default("[]")
@@ -85,12 +86,12 @@ model TeamProfile {
   category     Category
 
   // CACHING FOR FINAL RESULT PAGE
-  total_score   Int      @default(0)
-  total_penalty Int      @default(0)
+  total_score   Int     @default(0)
+  total_penalty Int     @default(0)
   rank          Int?
-  is_active     Boolean  @default(true)
-  is_blocked    Boolean  @default(false) @map("isBlocked")  // Kill Switch for real-time disqualification
-  
+  is_active     Boolean @default(true)
+  is_blocked    Boolean @default(false) @map("isBlocked") // Kill Switch for real-time disqualification
+
   // Contest Assignment - Teams assigned to specific contests
   assigned_contest_id String?
   assigned_contest    Contest? @relation("AssignedTeams", fields: [assigned_contest_id], references: [id], onDelete: SetNull)
@@ -106,19 +107,19 @@ model TeamProfile {
 // NEW: ATOMIC ACCUMULATOR PATTERN - O(1) Leaderboard Reads
 // This table caches current standings to avoid expensive calculations
 model TeamScore {
-  id          String   @id @default(uuid())
-  teamId      String   @unique @map("team_id")
-  team        TeamProfile @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  
+  id     String      @id @default(uuid())
+  teamId String      @unique @map("team_id")
+  team   TeamProfile @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
   // ICPC Scoring: Most Solved → Lowest Penalty
-  solvedCount  Int     @default(0) @map("solved_count")
-  totalPenalty Int     @default(0) @map("total_penalty") // Time + (20 × Rejections)
-  
+  solvedCount  Int @default(0) @map("solved_count")
+  totalPenalty Int @default(0) @map("total_penalty") // Time + (20 × Rejections)
+
   // JSON field to track problem-specific state for O(1) lookups during grading
   // Structure: { "problemId": { "solved": boolean, "attempts": int, "penalty": int } }
-  problemStats Json    @default("{}") @map("problem_stats")
-  
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  problemStats Json @default("{}") @map("problem_stats")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("team_score")
 }
@@ -126,104 +127,104 @@ model TeamScore {
 // NEW: ISOLATION LAYER
 // Ensures a team is explicitly linked to a contest and guards against contest deletion
 model ContestRegistration {
-  id          String   @id @default(uuid())
-  user_id     String
-  contest_id  String
+  id            String   @id @default(uuid())
+  user_id       String
+  contest_id    String
   registered_at DateTime @default(now())
 
-  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  contest     Contest  @relation(fields: [contest_id], references: [id], onDelete: Restrict) // PREVENTS CONTEST DELETE IF TEAMS ARE REGISTERED
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  contest Contest @relation(fields: [contest_id], references: [id], onDelete: Restrict) // PREVENTS CONTEST DELETE IF TEAMS ARE REGISTERED
 
   @@unique([user_id, contest_id])
   @@map("ContestRegistration")
 }
 
-
 model Contest {
-  id         String   @id @default(uuid())
-  name       String
-  startTime  DateTime @map("start_time")
-  endTime    DateTime @map("end_time")
+  id        String   @id @default(uuid())
+  name      String
+  startTime DateTime @map("start_time")
+  endTime   DateTime @map("end_time")
 
   // CONTROL FLAGS - The "$Z$-Gate"
-  isPaused   Boolean  @default(false) @map("is_paused")      // Emergency brake - blocks ALL submissions
-  pausedAt   DateTime? @map("paused_at")                     // Timestamp when pause started (for time math)
-  isFrozen   Boolean  @default(false) @map("is_frozen")      // Leaderboard freeze - hide scores but allow submissions
+  isPaused Boolean   @default(false) @map("is_paused") // Emergency brake - blocks ALL submissions
+  pausedAt DateTime? @map("paused_at") // Timestamp when pause started (for time math)
+  isFrozen Boolean   @default(false) @map("is_frozen") // Leaderboard freeze - hide scores but allow submissions
 
   // Legacy fields (backward compatible)
-  frozenAt   DateTime? @map("frozen_at")
-  isActive   Boolean  @default(true) @map("is_active")
-  config     Json     @default("{}")
+  frozenAt DateTime? @map("frozen_at")
+  isActive Boolean   @default(true) @map("is_active")
+  config   Json      @default("{}")
 
   // Relations
-  problems   Problem[]                @relation("ContestProblems")
-  announcements Announcement[]        @relation("ContestAnnouncements")
-  registrations ContestRegistration[] // NEW: Link back to teams
-  assigned_teams TeamProfile[] @relation("AssignedTeams")
+  problems         Problem[]             @relation("ContestProblems")
+  announcements    Announcement[]        @relation("ContestAnnouncements")
+  registrations    ContestRegistration[] // NEW: Link back to teams
+  assigned_teams   TeamProfile[]         @relation("AssignedTeams")
+  jury_assignments JuryAssignment[]      @relation("JuryAssignments") // JURY: Jury members assigned to this contest
 
   // NEW: Category for the contest itself (to default new problems)
-  category   Category @default(CORE)
+  category Category @default(CORE)
 }
 
 model Problem {
-  id          String   @id @default(uuid())
-  orderIndex  Int      @default(0) @map("order_index")
+  id         String @id @default(uuid())
+  orderIndex Int    @default(0) @map("order_index")
 
   title       String
-  description String   @db.Text
+  description String      @db.Text
   category    Category
   type        ProblemType @default(PHYSICAL)
-  contentUrl  String?  @map("content_url") // Path to PDF if DIGITAL
-  points      Int      @default(100)
+  contentUrl  String?     @map("content_url") // Path to PDF if DIGITAL
+  points      Int         @default(100)
 
-  timeLimitSec   Float?  @default(2.0) @map("time_limit_sec")
-  memoryLimitMb  Int?    @default(256) @map("memory_limit_mb")
+  timeLimitSec  Float? @default(2.0) @map("time_limit_sec")
+  memoryLimitMb Int?   @default(256) @map("memory_limit_mb")
 
   assetsPath String? @map("assets_path")
 
-  contestId  String  @map("contest_id")
-  contest    Contest @relation("ContestProblems", fields: [contestId], references: [id], onDelete: Cascade)
+  contestId String  @map("contest_id")
+  contest   Contest @relation("ContestProblems", fields: [contestId], references: [id], onDelete: Cascade)
 
   submissions    Submission[]
   clarifications Clarification[]
 }
 
 model Submission {
-  id        String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  fileUrl   String   @map("file_path")  // Local path: /uploads/...
-  fileHash  String   @map("file_hash")
-  fileType  String   @map("language")   // 'cpp', 'zip', 'apk'
-  status    SubmissionStatus @default(PENDING) @map("verdict")
+  fileUrl  String           @map("file_path") // Local path: /uploads/...
+  fileHash String           @map("file_hash")
+  fileType String           @map("language") // 'cpp', 'zip', 'apk'
+  status   SubmissionStatus @default(PENDING) @map("verdict")
 
   // LOGIC FLAGS - The Gauntlet
-  isLatest  Boolean  @default(true) @map("is_latest")  // For efficient querying of latest submission
-  canRetry  Boolean  @default(false) @map("can_retry") // Admin override flag
+  isLatest Boolean @default(true) @map("is_latest") // For efficient querying of latest submission
+  canRetry Boolean @default(false) @map("can_retry") // Admin override flag
 
-  autoScore    Int      @default(0) @map("auto_score")
-  manualScore  Int?     @map("manual_score")
-  finalScore   Int      @default(0) @map("final_score")
+  autoScore   Int  @default(0) @map("auto_score")
+  manualScore Int? @map("manual_score")
+  finalScore  Int  @default(0) @map("final_score")
 
-  penalty      Int      @default(0)
+  penalty Int @default(0)
 
-  submittedAt  DateTime @default(now()) @map("submitted_at")
+  submittedAt DateTime @default(now()) @map("submitted_at")
 
   // Relations
-  userId    String   @map("user_id")
-  user      User     @relation("SubmittedBy", fields: [userId], references: [id], onDelete: Cascade)
-  problemId String   @map("problem_id")
-  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  userId    String  @map("user_id")
+  user      User    @relation("SubmittedBy", fields: [userId], references: [id], onDelete: Cascade)
+  problemId String  @map("problem_id")
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
-  judgedById   String? @map("judged_by_id")
-  judgedBy     User?   @relation("JudgedBy", fields: [judgedById], references: [id])
+  judgedById String? @map("judged_by_id")
+  judgedBy   User?   @relation("JudgedBy", fields: [judgedById], references: [id])
 
-  juryComment  String? @db.Text @map("jury_comment")
+  juryComment String? @map("jury_comment") @db.Text
 }
 
 model Clarification {
-  id        String   @id @default(uuid())
-  question  String   @db.Text
-  answer    String?  @db.Text
+  id       String  @id @default(uuid())
+  question String  @db.Text
+  answer   String? @db.Text
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -231,8 +232,8 @@ model Clarification {
   problem_id String?
   problem    Problem? @relation(fields: [problem_id], references: [id], onDelete: SetNull) // Clarification can exist without problem
 
-  user_id   String
-  user      User   @relation("SentBy", fields: [user_id], references: [id], onDelete: Cascade)
+  user_id        String
+  user           User    @relation("SentBy", fields: [user_id], references: [id], onDelete: Cascade)
   answered_by_id String?
   answered_by    User?   @relation("AnsweredBy", fields: [answered_by_id], references: [id])
 }
@@ -254,31 +255,52 @@ model Announcement {
 model SystemSetting {
   id          String   @id @default(uuid())
   key         String   @unique // e.g., 'RAM_LIMIT_MB', 'CPU_WARNING_THRESHOLD', 'NETWORK_SPEED_LIMIT_MBPS'
-  value       String   // Store as string, parse in application
+  value       String // Store as string, parse in application
   description String?
   updatedAt   DateTime @updatedAt
 
   @@map("system_setting")
 }
 
+// --- JURY MANAGEMENT ---
+
+// JuryAssignment: Many-to-Many relationship between Jury members and Contests
+// Implements Zero-Trust: Juries can ONLY access contests they are explicitly assigned to
+model JuryAssignment {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  contestId  String   @map("contest_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  // Relations
+  user    User    @relation("JuryAssignments", fields: [userId], references: [id], onDelete: Cascade)
+  contest Contest @relation("JuryAssignments", fields: [contestId], references: [id], onDelete: Cascade)
+
+  // Constraints
+  @@unique([userId, contestId]) // Prevent duplicate assignments
+  @@index([userId]) // Fast lookup: "Which contests is this jury assigned to?"
+  @@index([contestId]) // Fast lookup: "Which juries are assigned to this contest?"
+  @@map("jury_assignment")
+}
+
 // Enhanced Security & System Logs (The "Black Box")
 model SystemLog {
-  id        String   @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   // Legacy fields (backward compatible)
-  action    LogAction
-  details   String
+  action     LogAction
+  details    String
   ip_address String?
 
   // NEW: Enhanced logging capabilities
-  level     String   @default("INFO") // 'INFO', 'WARN', 'ERROR', 'CRITICAL'
-  message   String   @default("")     // Human-readable log message
-  metadata  Json?                     // Structured data: { cpuLoad: 99, teamId: 123, etc. }
+  level    String @default("INFO") // 'INFO', 'WARN', 'ERROR', 'CRITICAL'
+  message  String @default("") // Human-readable log message
+  metadata Json? // Structured data: { cpuLoad: 99, teamId: 123, etc. }
 
   timestamp DateTime @default(now())
 
   // Relations
   submission_id String?
   user_id       String?
-  user          User?    @relation(fields: [user_id], references: [id])
+  user          User?   @relation(fields: [user_id], references: [id])
 }

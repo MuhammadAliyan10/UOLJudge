@@ -6,16 +6,16 @@ import {
   LayoutDashboard,
   Trophy,
   Users,
-  List,
+  FileStack,
   Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
-  FileCheck,
   Menu,
   X,
   Tally1,
   Tally2,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/server/actions/auth";
@@ -35,14 +35,9 @@ const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Contests", href: "/admin/contests", icon: Trophy },
   { name: "Teams", href: "/admin/teams", icon: Users },
-  { name: "Grading", href: "/admin/grading", icon: FileCheck },
-  { name: "Logs", href: "/admin/logs", icon: List },
-
-];
-const secondaryNavigation = [
-
+  { name: "Jury", href: "/admin/users/jury", icon: Shield },
+  { name: "Logs", href: "/admin/logs", icon: FileStack },
   { name: "Settings", href: "/admin/settings", icon: Settings },
-
 ];
 
 export default function Sidebar({
@@ -153,50 +148,6 @@ export default function Sidebar({
                   </span>
                 </Link>
               );
-            })}
-          </div>
-
-          {/* Secondary Nav Divider/Label */}
-          {!isCollapsed && (
-            <div className="px-3 mt-6 mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Settings
-            </div>
-          )}
-
-          <div className="space-y-1">
-            {secondaryNavigation.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={closeMobileSidebar}
-                  className={cn(
-                    "group flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
-                    isActive
-                      ? "bg-[#635BFF]/10 text-[#635BFF]"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  )}
-                >
-                  <Icon
-                    size={20}
-                    className={cn(
-                      "flex-shrink-0 transition-colors",
-                      isActive ? "text-[#635BFF]" : "text-slate-400 group-hover:text-slate-600"
-                    )}
-                    strokeWidth={isActive ? 2.5 : 2}
-                  />
-                  <span
-                    className={cn(
-                      "whitespace-nowrap transition-all duration-300 overflow-hidden",
-                      isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-                    )}
-                  >
-                    {item.name}
-                  </span>
-                </Link>
-              )
             })}
           </div>
 

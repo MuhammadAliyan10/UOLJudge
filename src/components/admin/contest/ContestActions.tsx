@@ -143,6 +143,7 @@ export function ContestActions({ contest }: { contest: any }) {
       <ManageProblemsDialog
         contestId={contest.id}
         contestName={contest.name}
+        contestCategory={contest.category}
         existingProblems={contest.problems}
         open={openProblems}
         onOpenChange={setOpenProblems}

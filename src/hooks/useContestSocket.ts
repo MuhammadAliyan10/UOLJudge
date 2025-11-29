@@ -10,7 +10,10 @@ export type ContestWSEventType =
     | "CONTEST_UPDATE"
     | "ADMIN_UPDATE"
     | "TEAM_STATUS_UPDATE"
-    | "TIME_UPDATE";
+    | "TIME_UPDATE"
+    | "NEW_SUBMISSION"
+    | "JURY_QUEUE_UPDATE"
+    | "SUBMISSION_UPDATE";
 
 export interface ContestStatusPayload {
     contestId: string;
@@ -33,6 +36,9 @@ export interface UseContestSocketOptions {
     onTimeUpdate?: (payload: { endTime: string }) => void;
     onContestUpdate?: (payload: any) => void;
     onAdminUpdate?: (payload: any) => void;
+    onNewSubmission?: (payload: { submissionId: string; contestId: string; problemId: string; teamName: string }) => void;
+    onJuryQueueUpdate?: (payload: { contestId: string; action: string }) => void;
+    onSubmissionUpdate?: (payload: { submissionId: string; status: string; judgedById: string }) => void;
     onConnect?: () => void;
     onDisconnect?: () => void;
 }
@@ -87,6 +93,15 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
                             break;
                         case "ADMIN_UPDATE":
                             options.onAdminUpdate?.(message.payload);
+                            break;
+                        case "NEW_SUBMISSION":
+                            options.onNewSubmission?.(message.payload);
+                            break;
+                        case "JURY_QUEUE_UPDATE":
+                            options.onJuryQueueUpdate?.(message.payload);
+                            break;
+                        case "SUBMISSION_UPDATE":
+                            options.onSubmissionUpdate?.(message.payload);
                             break;
                         default:
                             // Handle generic updates if needed

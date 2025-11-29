@@ -166,12 +166,9 @@ export function EditTeamDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] p-0 bg-white border-slate-200 shadow-xl overflow-hidden rounded-lg ring-1 ring-slate-950/5">
+      <DialogContent className="sm:max-w-[580px] p-0 bg-white border-slate-200 shadow-xl overflow-hidden rounded-lg ring-1 ring-slate-950/5">
         <DialogHeader className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="h-2 w-2 rounded-full bg-amber-400" />
-            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Modification</span>
-          </div>
+
           <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight">Edit Team: {team.username}</DialogTitle>
           <DialogDescription className="text-slate-500 text-sm mt-1">
             Update team assignments or manage access.
@@ -232,7 +229,7 @@ export function EditTeamDialog({
                         defaultValue={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-9 bg-slate-50 border-slate-200 focus:bg-white text-slate-900">
+                          <SelectTrigger className="h-9 w-full bg-slate-50 border-slate-200 focus:bg-white text-slate-900">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -265,7 +262,7 @@ export function EditTeamDialog({
                         defaultValue={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-9 bg-slate-50 border-slate-200 focus:bg-white text-slate-900">
+                          <SelectTrigger className="h-9 w-full bg-slate-50 border-slate-200 focus:bg-white text-slate-900">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>

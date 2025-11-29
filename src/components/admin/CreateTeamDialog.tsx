@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Loader2, KeyRound, Monitor, User } from "lucide-react";
+import { Plus, Loader2, KeyRound, Monitor, User, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // --- Schema Definition ---
@@ -102,16 +102,13 @@ export function CreateTeamDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-slate-900 text-white hover:bg-slate-800 shadow-sm border border-slate-900 font-medium transition-all">
+        <Button className="bg-primary text-white hover:bg-primary/80 shadow-sm border border-primary font-medium transition-all">
           <Plus size={16} className="mr-2" /> New Team
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[550px] bg-white border-slate-200 shadow-xl p-0 gap-0 overflow-hidden rounded-lg ring-1 ring-slate-950/5">
+      <DialogContent className="sm:max-w-[600px] bg-white border-slate-200 shadow-xl p-0 gap-0 overflow-hidden rounded-lg ring-1 ring-slate-950/5">
         <DialogHeader className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="h-2 w-2 rounded-full bg-slate-400" />
-            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Registration</span>
-          </div>
+
           <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight">Register New Team</DialogTitle>
           <DialogDescription className="text-slate-500 text-sm mt-1">
             Create a team profile and issue access credentials.
@@ -170,7 +167,7 @@ export function CreateTeamDialog() {
                         defaultValue={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-9 bg-slate-50 border-slate-200 focus:bg-white text-slate-900">
+                          <SelectTrigger className="h-9 w-full bg-slate-50 border-slate-200 focus:bg-white text-slate-900">
                             <SelectValue placeholder="Select Contest" />
                           </SelectTrigger>
                         </FormControl>
@@ -215,6 +212,7 @@ export function CreateTeamDialog() {
                             <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <Input
                               placeholder="team_01"
+                              autoComplete="off"
                               className="pl-9 h-9 bg-white border-slate-200 font-mono text-sm text-slate-900 focus:border-slate-300"
                               {...field}
                             />
@@ -253,11 +251,11 @@ export function CreateTeamDialog() {
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
               <Button
                 type="submit"
-                className="bg-slate-900 hover:bg-slate-800 text-white font-bold tracking-tight h-10 px-6 shadow-sm border border-slate-900"
+                className="bg-primary hover:bg-primary-800 text-white font-bold tracking-tight h-10 px-6 shadow-sm border border-slate-900"
                 disabled={loading}
               >
                 {loading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
-                Create Team Account
+                Create Team Account <Plus className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </form>

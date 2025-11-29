@@ -53,12 +53,9 @@ export function DeleteContestDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[450px] p-0 border-slate-200 shadow-xl overflow-hidden rounded-lg ring-1 ring-slate-950/5">
+            <DialogContent className="sm:max-w-[500px] p-0 border-slate-200 shadow-xl overflow-hidden rounded-lg ring-1 ring-slate-950/5">
                 <div className="bg-red-50/50 border-b border-red-100 px-6 py-5">
-                    <div className="flex items-center gap-2 mb-1">
-                        <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                        <span className="text-xs font-bold uppercase tracking-widest text-red-600/70">Critical Action</span>
-                    </div>
+
                     <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-900 tracking-tight">
                         Delete Contest
                     </DialogTitle>

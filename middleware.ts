@@ -8,6 +8,7 @@ import { UserRole } from '@prisma/client';
 
 const PUBLIC_ROUTES = ['/', '/login'];
 const ADMIN_ROUTES = ['/admin'];
+const JURY_ROUTES = ['/jury'];
 const CONTEST_ROUTES = ['/contest'];
 
 // ============================================================
@@ -33,8 +34,11 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
             return NextResponse.next();
         }
 
-        // Determine if the route is an admin or contest route (protected)
+        // Determine if the route is protected
         const isAdminRoute = ADMIN_ROUTES.some((route) =>
+            pathname.startsWith(route)
+        );
+        const isJuryRoute = JURY_ROUTES.some((route) =>
             pathname.startsWith(route)
         );
         const isContestRoute = CONTEST_ROUTES.some((route) =>
@@ -42,7 +46,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
         );
 
         // If no session and trying to access a protected route, redirect to login with cache control
-        if (isAdminRoute || isContestRoute) {
+        if (isAdminRoute || isJuryRoute || isContestRoute) {
             const loginUrl = new URL('/login', request.url);
             loginUrl.searchParams.set('from', pathname);
             const response = NextResponse.redirect(loginUrl);
@@ -51,7 +55,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
             return response;
         }
 
-        // For any other non-public, non-admin/contest route (e.g., a future protected route), redirect to login
+        // For any other non-public route, redirect to login
         const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('from', pathname);
         return NextResponse.redirect(loginUrl);
@@ -59,33 +63,51 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
     // 4. User is authenticated - redirect away from login page
     if (pathname === '/login') {
-        const dashboardUrl = new URL(
-            session.role === 'PARTICIPANT' ? '/contest' : '/admin',
-            request.url
-        );
+        let dashboardUrl: URL;
+
+        // Zero-Trust: Each role has exactly ONE designated area
+        if (session.role === UserRole.ADMIN) {
+            dashboardUrl = new URL('/admin', request.url);
+        } else if (session.role === UserRole.JURY) {
+            dashboardUrl = new URL('/jury', request.url);
+        } else {
+            dashboardUrl = new URL('/contest', request.url);
+        }
+
         return NextResponse.redirect(dashboardUrl);
     }
 
-    // 5. Role-based access control
+    // 5. Role-based access control (ZERO-TRUST ENFORCEMENT)
     const isAdminRoute = ADMIN_ROUTES.some((route) =>
+        pathname.startsWith(route)
+    );
+    const isJuryRoute = JURY_ROUTES.some((route) =>
         pathname.startsWith(route)
     );
     const isContestRoute = CONTEST_ROUTES.some((route) =>
         pathname.startsWith(route)
     );
 
-    // ADMIN and JURY can access admin routes
-    if (isAdminRoute) {
-        if (session.role !== UserRole.ADMIN && session.role !== UserRole.JURY) {
-            const forbiddenUrl = new URL('/contest', request.url);
+    // RULE: ADMIN can ONLY access /admin/*
+    if (session.role === UserRole.ADMIN) {
+        if (!isAdminRoute && !isPublicRoute) {
+            const forbiddenUrl = new URL('/admin', request.url);
             return NextResponse.redirect(forbiddenUrl);
         }
     }
 
-    // Only PARTICIPANT can access contest routes
-    if (isContestRoute) {
-        if (session.role !== UserRole.PARTICIPANT) {
-            const forbiddenUrl = new URL('/admin', request.url);
+    // RULE: JURY can ONLY access /jury/*
+    if (session.role === UserRole.JURY) {
+        if (!isJuryRoute && !isPublicRoute) {
+            const forbiddenUrl = new URL('/jury', request.url);
+            return NextResponse.redirect(forbiddenUrl);
+        }
+    }
+
+    // RULE: PARTICIPANT can ONLY access /contest/*
+    if (session.role === UserRole.PARTICIPANT) {
+        if (!isContestRoute && !isPublicRoute) {
+            const forbiddenUrl = new URL('/contest', request.url);
             return NextResponse.redirect(forbiddenUrl);
         }
     }

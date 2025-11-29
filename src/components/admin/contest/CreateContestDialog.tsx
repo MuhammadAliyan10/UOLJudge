@@ -101,19 +101,16 @@ export function CreateContestDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-slate-900 text-white hover:bg-slate-800 shadow-sm border border-slate-900 font-medium transition-all">
+        <Button className="bg-primary text-white hover:bg-primary/80 shadow-sm border border-primary font-medium transition-all">
           <Plus size={16} className="mr-2" />
           New Contest
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[650px] bg-white border-slate-200 shadow-xl p-0 gap-0 overflow-hidden rounded-lg ring-1 ring-slate-950/5">
+      <DialogContent className="sm:max-w-[680px] bg-white border-slate-200 shadow-xl p-0 gap-0 overflow-hidden rounded-lg ring-1 ring-slate-950/5">
         <DialogHeader className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="h-2 w-2 rounded-full bg-slate-400" />
-            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Configuration</span>
-          </div>
+
           <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight">Create New Contest</DialogTitle>
-          <DialogDescription className="text-slate-500 text-sm mt-1">
+          <DialogDescription className="text-slate-500 text-sm">
             Set up the schedule, category, and problem parameters.
           </DialogDescription>
         </DialogHeader>
@@ -130,6 +127,7 @@ export function CreateContestDialog() {
                   <FormControl>
                     <Input
                       {...field}
+                      autoComplete="off"
                       placeholder="e.g. Winter Speed Run 2024"
                       className="h-10 bg-slate-50 border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-slate-400/20 transition-all font-medium text-slate-900 placeholder:text-slate-400"
                     />
@@ -186,14 +184,14 @@ export function CreateContestDialog() {
                       defaultValue={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger className="h-10 bg-slate-50 border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-slate-400/20 text-slate-900 font-medium">
+                        <SelectTrigger className="h-10 w-full bg-slate-50 border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-slate-400/20 text-slate-900 font-medium">
                           <SelectValue placeholder="Select Category" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="CORE">Core</SelectItem>
-                        <SelectItem value="WEB">Web</SelectItem>
-                        <SelectItem value="ANDROID">Android</SelectItem>
+                        <SelectItem value="CORE">Core Prgramming</SelectItem>
+                        <SelectItem value="WEB">Web Development</SelectItem>
+                        <SelectItem value="ANDROID">Android Development</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -229,8 +227,9 @@ export function CreateContestDialog() {
 
             <div className="pt-2">
               <Button
+
                 type="submit"
-                className="w-full h-11 bg-slate-900 text-white hover:bg-slate-800 font-bold tracking-tight shadow-sm border border-slate-900 hover:border-slate-800 transition-all"
+                className="w-full h-11 bg-primary text-white hover:bg-primary/80 font-bold tracking-tight shadow-sm border border-primary hover:border-primary/80 transition-all"
                 disabled={loading}
               >
                 {loading ? (

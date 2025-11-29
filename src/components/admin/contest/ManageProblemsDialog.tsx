@@ -128,12 +128,9 @@ export function ManageProblemsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[1000px]! p-0 bg-white border-slate-200 shadow-2xl rounded-lg ring-1 ring-slate-950/5 flex flex-col max-h-[90vh]!">
+      <DialogContent className="max-w-[1200px]! p-0 bg-white border-slate-200 shadow-2xl rounded-lg ring-1 ring-slate-950/5 flex flex-col max-h-[90vh]!">
         <DialogHeader className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="h-2 w-2 rounded-full bg-indigo-500" />
-            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Configuration</span>
-          </div>
+
           <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             Manage Problems
           </DialogTitle>
@@ -166,7 +163,7 @@ export function ManageProblemsDialog({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className=" gap-4">
                   <div className="space-y-2">
                     <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
                       <Trophy size={10} /> Points
@@ -176,7 +173,7 @@ export function ManageProblemsDialog({
                       type="number"
                       defaultValue={100}
                       required
-                      className="h-9 bg-slate-50 border-slate-200 focus:bg-white font-mono text-slate-900"
+                      className="h-9  bg-slate-50 border-slate-200 focus:bg-white font-mono text-slate-900"
                     />
                   </div>
                   {/* Hidden Category - Defaulting to Contest Category */}
@@ -233,7 +230,7 @@ export function ManageProblemsDialog({
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-slate-900 text-white hover:bg-slate-800 shadow-sm font-bold tracking-tight h-10 border border-slate-900"
+                    className="w-full bg-primary text-white hover:bg-primary/80 shadow-sm font-bold tracking-tight h-10 border border-slate-900"
                   >
                     {loading ? (
                       <Loader2 className="animate-spin mr-2" size={16} />
@@ -258,7 +255,7 @@ export function ManageProblemsDialog({
               </span>
             </div>
 
-            <ScrollArea className="flex-1 p-6">
+            <ScrollArea className="flex-1 p-6 overflow-y-auto">
               <div className="space-y-3">
                 {existingProblems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-40 text-slate-400 border-2 border-dashed border-slate-200 rounded-lg">
@@ -271,7 +268,7 @@ export function ManageProblemsDialog({
                     return (
                       <div
                         key={p.id}
-                        className="flex items-center justify-between p-4 bg-white border border-slate-200 shadow-sm rounded-lg group hover:border-slate-300 transition-all"
+                        className="flex items-center justify-between p-4 bg-white border border-dashed border-slate-200 shadow-sm rounded-lg group hover:border-slate-300 transition-all"
                       >
                         <div className="flex items-center gap-4">
                           <div className="flex flex-col items-center justify-center w-10 h-10 rounded-md bg-slate-100 border border-slate-200 text-slate-700 shadow-sm">

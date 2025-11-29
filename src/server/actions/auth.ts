@@ -70,11 +70,14 @@ export async function loginAction(
 
         revalidatePath('/');
 
-        // 6. Return success with redirect path
-        const redirectTo =
-            user.role === 'ADMIN' || user.role === 'JURY'
-                ? '/admin'
-                : '/contest'; // Auto-redirects to assigned contest
+        // 6. Return success with redirect path based on role
+        let redirectTo = '/contest'; // Default for PARTICIPANT
+
+        if (user.role === 'ADMIN') {
+            redirectTo = '/admin';
+        } else if (user.role === 'JURY') {
+            redirectTo = '/jury';
+        }
 
         return {
             success: true,

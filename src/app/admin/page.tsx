@@ -42,8 +42,8 @@ export default async function AdminDashboard() {
           title="Active Contests"
           value={activeContests}
           icon={Trophy}
-          color="text-blue-600"
-          bg="bg-blue-50"
+          color="text-primary-600"
+          bg="bg-primary-50"
           desc="Running right now"
         />
         <StatCard
@@ -111,7 +111,7 @@ export default async function AdminDashboard() {
             <h3 className="font-semibold text-slate-800">System Logs</h3>
             <Link
               href="/admin/logs"
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm text-primary hover:underline"
             >
               View All
             </Link>
@@ -175,7 +175,7 @@ function ActionCard({ href, title, desc, icon: Icon, highlight }: any) {
         group flex items-center gap-4 p-4 rounded-xl border transition-all duration-200
         ${highlight
           ? "bg-amber-50 border-amber-200 hover:border-amber-300"
-          : "bg-white border-slate-200 hover:border-blue-300 hover:shadow-md"
+          : "bg-white border-slate-200 hover:border-primary-300 hover:shadow-md"
         }
       `}
     >
@@ -184,7 +184,7 @@ function ActionCard({ href, title, desc, icon: Icon, highlight }: any) {
         p-3 rounded-lg transition-colors
         ${highlight
             ? "bg-amber-100 text-amber-700"
-            : "bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600"
+            : "bg-slate-100 text-slate-600 group-hover:bg-primary-50 group-hover:text-primary-600"
           }
       `}
       >
@@ -207,7 +207,7 @@ function ActionCard({ href, title, desc, icon: Icon, highlight }: any) {
       <div
         className={`
         opacity-0 -translate-x-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0
-        ${highlight ? "text-amber-600" : "text-blue-600"}
+        ${highlight ? "text-amber-600" : "text-primary-600"}
       `}
       >
         <ArrowRight size={16} />

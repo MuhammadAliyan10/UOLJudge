@@ -155,13 +155,10 @@ export function EditContestDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-white border-slate-200 shadow-xl p-0 gap-0 rounded-lg ring-1 ring-slate-950/5">
+      <DialogContent className="sm:max-w-[680px]! max-h-[90vh]! overflow-y-auto bg-white border-slate-200 shadow-xl p-0 gap-0 rounded-lg ring-1 ring-slate-950/5">
         <DialogHeader className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="h-2 w-2 rounded-full bg-amber-400" />
-            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Modification</span>
-          </div>
-          <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+
+          <DialogTitle className="text-xl  font-bold text-slate-900 tracking-tight flex items-center gap-2">
             Edit Contest
           </DialogTitle>
           <DialogDescription className="text-slate-500 text-sm">
@@ -327,7 +324,7 @@ export function EditContestDialog({
               <Button
                 type="submit"
                 disabled={loading}
-                className="h-9 bg-slate-900 text-white hover:bg-slate-800 border border-slate-900 shadow-sm"
+                className="h-9 bg-primary text-white hover:bg-primary/80 border border-primary shadow-sm"
               >
                 {loading ? (
                   <Loader2 className="animate-spin mr-2" size={16} />

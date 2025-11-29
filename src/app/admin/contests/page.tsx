@@ -140,7 +140,7 @@ export default async function ContestsPage({
         <div className="flex items-center gap-3">
           <Link
             href="/admin/contests/results"
-            className="group inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 rounded-md transition-all text-sm font-medium shadow-sm hover:shadow"
+            className="group inline-flex items-center gap-2 px-4 py-2 bg-secondary border border-secondary text-white hover:text-white hover:border-primary rounded-md transition-all text-sm font-medium shadow-sm hover:shadow"
           >
             <Trophy size={15} className="text-slate-400 group-hover:text-amber-500 transition-colors" />
             <span>Leaderboards</span>
