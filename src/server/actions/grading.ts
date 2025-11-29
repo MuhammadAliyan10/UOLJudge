@@ -264,7 +264,11 @@ export async function getSubmissionPreview(submissionId: string): Promise<{
 
         // Handle both absolute and relative paths
         let filePath = submission.fileUrl;
-        if (!path.isAbsolute(filePath)) {
+
+        // If path starts with /uploads, it's relative to public dir
+        if (filePath.startsWith("/uploads")) {
+            filePath = path.join(process.cwd(), "public", filePath);
+        } else if (!path.isAbsolute(filePath)) {
             filePath = path.join(process.cwd(), "public", filePath);
         }
 
@@ -275,8 +279,17 @@ export async function getSubmissionPreview(submissionId: string): Promise<{
                 content,
                 isBinary: false,
             };
-        } catch (error) {
-            // If UTF-8 fails, it's likely binary
+        } catch (error: any) {
+            // Check if it's actually a binary file or just not found
+            // If the error is ENOENT (File not found), we should return an error, not say it's binary
+            if (error.code === 'ENOENT') {
+                return {
+                    success: false,
+                    error: "File not found on server",
+                };
+            }
+
+            // If UTF-8 fails (encoding error), it's likely binary
             return {
                 success: true,
                 isBinary: true,

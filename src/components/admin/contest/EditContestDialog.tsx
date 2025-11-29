@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -88,7 +88,7 @@ export function EditContestDialog({
   onOpenChange,
 }: EditContestDialogProps) {
   const [loading, setLoading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false); // New state for delete loading
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Initialize Form
   const form = useForm<FormValues>({
@@ -101,6 +101,19 @@ export function EditContestDialog({
       isActive: contest.is_active ? "true" : "false",
     },
   });
+
+  // Reset form when contest changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        id: contest.id,
+        name: contest.name,
+        startTime: new Date(contest.start_time),
+        endTime: new Date(contest.end_time),
+        isActive: contest.is_active ? "true" : "false",
+      });
+    }
+  }, [contest, open, form]);
 
   // --- Handlers ---
 
@@ -305,11 +318,33 @@ function DateTimePicker({
   value: Date;
   onChange: (date: Date) => void;
 }) {
+  // Validate date to prevent format errors
+  const isValidDate = value instanceof Date && !isNaN(value.getTime());
+  const safeValue = isValidDate ? value : new Date();
+
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const [hours, minutes] = e.target.value.split(":");
-    const newDate = new Date(value);
-    newDate.setHours(parseInt(hours));
-    newDate.setMinutes(parseInt(minutes));
+    const timeValue = e.target.value;
+
+    // Validate HH:MM format (prevent backslash crash)
+    if (!/^\d{2}:\d{2}$/.test(timeValue)) {
+      return; // Silently ignore invalid input
+    }
+
+    const [hours, minutes] = timeValue.split(":");
+    const hoursNum = parseInt(hours, 10);
+    const minutesNum = parseInt(minutes, 10);
+
+    // Validate time ranges
+    if (hoursNum < 0 || hoursNum > 23 || minutesNum < 0 || minutesNum > 59) {
+      return;
+    }
+
+    const newDate = new Date(safeValue);
+    newDate.setHours(hoursNum);
+    newDate.setMinutes(minutesNum);
+    newDate.setSeconds(0);
+    newDate.setMilliseconds(0);
+
     onChange(newDate);
   };
 
@@ -321,19 +356,25 @@ function DateTimePicker({
             variant={"outline"}
             className={cn(
               "w-full justify-start text-left font-normal border-slate-200",
-              !value && "text-muted-foreground"
+              !isValidDate && "text-muted-foreground"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
-            {value ? format(value, "PPP p") : <span>Pick a date</span>}
+            {isValidDate ? format(safeValue, "PPP p") : <span>Pick a date</span>}
           </Button>
         </FormControl>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0 bg-white" align="start">
         <Calendar
           mode="single"
-          selected={value}
+          selected={safeValue}
           onSelect={(d) => d && onChange(d)}
+          disabled={(date) => {
+            // Disable past dates (client-side UX only)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return date < today;
+          }}
           initialFocus
           className="p-3 border-b border-slate-100"
         />
@@ -342,7 +383,7 @@ function DateTimePicker({
           <Input
             type="time"
             className="bg-white border-slate-200 h-9"
-            value={format(value, "HH:mm")}
+            value={isValidDate ? format(safeValue, "HH:mm") : "00:00"}
             onChange={handleTimeChange}
           />
         </div>

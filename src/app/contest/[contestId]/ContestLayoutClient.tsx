@@ -20,8 +20,11 @@ import { toast } from "sonner";
 import { Category, SubmissionStatus } from "@prisma/client";
 import { ContestTimer } from "@/components/contest/ContestTimer";
 import { PausedOverlay } from "@/components/contest/PausedOverlay";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useContestSocket } from "@/hooks/useContestSocket";
+
+import { BlockedPage } from "@/components/contest/BlockedPage";
 
 interface ProblemSummary {
   id: string;
@@ -30,28 +33,34 @@ interface ProblemSummary {
 }
 
 interface ContestLayoutClientProps {
+  teamId: string;
   teamName: string;
   teamScore: number;
   teamCategory: Category;
   contestId: string;
   contestName: string;
+  contestStartTime: Date; // Added
   contestEndTime: Date;
   isPaused: boolean;
   pausedAt: Date | null;
+  isBlocked: boolean;
   problems: ProblemSummary[];
   submissionStatusMap: Record<string, SubmissionStatus>;
   children: React.ReactNode;
 }
 
 export function ContestLayoutClient({
+  teamId,
   teamName,
   teamScore,
   teamCategory,
   contestId,
   contestName,
+  contestStartTime, // Added
   contestEndTime,
   isPaused,
   pausedAt,
+  isBlocked: initialIsBlocked,
   problems,
   submissionStatusMap,
   children,
@@ -59,6 +68,32 @@ export function ContestLayoutClient({
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(initialIsBlocked);
+
+  // WebSocket hook for real-time contest updates
+  const { lastMessage } = useContestSocket({
+    onConnect: () => console.log('[Contest] WebSocket connected'),
+    onDisconnect: () => console.log('[Contest] WebSocket disconnected'),
+  });
+
+  // Handle incoming WebSocket messages
+  useEffect(() => {
+    if (!lastMessage) return;
+
+    console.log('[Contest] Received WS message:', lastMessage);
+
+    // Refresh page on contest updates
+    if (lastMessage.type === 'CONTEST_UPDATE') {
+      console.log('[Contest] Contest updated - refreshing...');
+      router.refresh();
+    }
+
+    // Refresh on score updates
+    if (lastMessage.type === 'SCORE_UPDATE' || lastMessage.type === 'LEADERBOARD_UPDATE') {
+      console.log('[Contest] Scores updated - refreshing...');
+      router.refresh();
+    }
+  }, [lastMessage, router]);
 
   const handleLogout = async () => {
     toast.loading("Signing out...");
@@ -152,8 +187,11 @@ export function ContestLayoutClient({
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
+      {/* Blocked Overlay */}
+      {isBlocked && <BlockedPage />}
+
       {/* Paused Overlay */}
-      {isPaused && <PausedOverlay pausedAt={pausedAt} />}
+      {isPaused && !isBlocked && <PausedOverlay pausedAt={pausedAt} />}
 
       {/* Top Header */}
       <header className="bg-white border-b border-slate-200 h-16 sticky top-0 z-40 shadow-sm">
@@ -196,6 +234,7 @@ export function ContestLayoutClient({
           <div>
             <ContestTimer
               initialEndTime={contestEndTime}
+              initialStartTime={contestStartTime} // Added
               initialPauseState={isPaused}
               contestId={contestId}
             />

@@ -42,10 +42,18 @@ export function ContestLayoutClient({
   const [timeRemaining, setTimeRemaining] = useState("--:--:--");
   const [isEndingSoon, setIsEndingSoon] = useState(false);
 
-  // Dynamic Navigation (remains same)
+  // Dynamic Navigation
   const navigation = [
-    { name: "Problems", href: "/contest/problems", icon: FileCode },
-    { name: "My Submissions", href: "/contest/submissions", icon: History },
+    {
+      name: "Problems",
+      href: contestId ? `/contest/${contestId}/problems` : "/contest",
+      icon: FileCode,
+    },
+    {
+      name: "My Submissions",
+      href: contestId ? `/contest/${contestId}/submissions` : "/contest",
+      icon: History,
+    },
     {
       name: "Leaderboard",
       href: contestId ? `/leaderboard/${contestId}` : "/leaderboard",

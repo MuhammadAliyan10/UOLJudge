@@ -15,89 +15,55 @@ interface PostContestPageProps {
 export function PostContestPage({ contestName, endTime, contestId }: PostContestPageProps) {
     return (
         <div className="min-h-[70vh] flex items-center justify-center px-4">
-            <Card className="max-w-2xl w-full border-slate-200 shadow-lg">
-                <CardContent className="p-8 md:p-12">
-                    {/* Icon */}
-                    <div className="flex justify-center mb-6">
-                        <div className="p-4 rounded-full bg-emerald-50">
-                            <CheckCircle2 size={48} className="text-emerald-600" />
+            <Card className="max-w-2xl w-full border-slate-200 shadow-xl bg-white/50 backdrop-blur-sm">
+                <CardContent className="p-8 md:p-12 text-center">
+                    <div className="mb-8">
+                        <div className="mx-auto w-24 h-24 rounded-full bg-emerald-50 flex items-center justify-center mb-6 ring-8 ring-emerald-50/50">
+                            <Trophy size={48} className="text-emerald-600" />
                         </div>
-                    </div>
-
-                    {/* Title */}
-                    <div className="text-center space-y-3 mb-8">
-                        <Badge
-                            variant="outline"
-                            className="bg-slate-50 text-slate-600 border-slate-200 text-xs font-medium px-3 py-1"
-                        >
-                            Finished
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-sm px-4 py-1 mb-4">
+                            Contest Completed
                         </Badge>
-                        <h1 className="text-3xl md:text-4xl font-bold text-slate-900">
-                            Contest Ended
-                        </h1>
-                        <p className="text-slate-600 text-lg">
-                            {contestName}
-                        </p>
                     </div>
 
-                    {/* End Time Info */}
-                    <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-6 mb-6 border border-slate-200">
-                        <div className="flex items-center justify-center gap-2 mb-3">
-                            <Clock className="text-slate-500" size={18} />
-                            <span className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                    <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">
+                        {contestName}
+                    </h1>
+
+                    <p className="text-xl text-slate-600 mb-8 max-w-lg mx-auto">
+                        Thank you for your participation! The contest has officially ended.
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
                                 Ended At
-                            </span>
+                            </div>
+                            <div className="font-mono text-lg font-bold text-slate-700">
+                                {new Date(endTime).toLocaleTimeString()}
+                            </div>
                         </div>
-                        <div className="text-center">
-                            <p className="text-xl font-bold text-slate-800 mb-1">
-                                {new Date(endTime).toLocaleTimeString('en-US', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                })}
-                            </p>
-                            <p className="text-sm text-slate-500">
-                                {new Date(endTime).toLocaleDateString('en-US', {
-                                    weekday: 'long',
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric',
-                                })}
-                            </p>
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+                                Date
+                            </div>
+                            <div className="font-mono text-lg font-bold text-slate-700">
+                                {new Date(endTime).toLocaleDateString()}
+                            </div>
                         </div>
                     </div>
 
-                    {/* Thank You Message */}
-                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-6 mb-8">
-                        <p className="text-center text-slate-700">
-                            <strong className="text-blue-900">Thank you for participating!</strong>
-                            <br />
-                            <span className="text-sm text-slate-600">
-                                The leaderboard has been finalized. Check your final ranking below.
-                            </span>
-                        </p>
-                    </div>
-
-                    {/* CTA Button */}
-                    <div className="flex justify-center">
-                        <Button
-                            size="lg"
-                            asChild
-                            className="bg-blue-600 hover:bg-blue-700 text-white gap-2 px-6 shadow-md"
-                        >
-                            <Link href={`/leaderboard/${contestId}`} target="_blank">
-                                <Trophy size={20} />
-                                View Final Leaderboard
-                                <ArrowRight size={18} />
-                            </Link>
-                        </Button>
-                    </div>
-
-                    {/* Secondary Info */}
-                    <div className="mt-6 text-center">
-                        <p className="text-xs text-slate-400">
-                            Submissions are now closed
-                        </p>
-                    </div>
+                    <Button
+                        size="lg"
+                        className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-lg shadow-emerald-600/20"
+                        asChild
+                    >
+                        <Link href={`/leaderboard/${contestId}`} target="_blank">
+                            <Trophy size={20} />
+                            View Final Leaderboard
+                            <ArrowRight size={18} />
+                        </Link>
+                    </Button>
                 </CardContent>
             </Card>
         </div>

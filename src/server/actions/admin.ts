@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs";
 import { Category } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
-import { broadcast } from "@/lib/broadcast";
+import { broadcastToWebSocket } from "@/lib/ws-broadcast-client";
 
 // --- SCHEMAS (Validation Layer) ---
 
@@ -14,7 +14,7 @@ const CreateTeamSchema = z.object({
   displayName: z.string().min(1, "Team Name is required"),
   username: z.string().min(3, "Username must be at least 3 chars"),
   password: z.string().min(6, "Password must be at least 6 chars"),
-  category: z.nativeEnum(Category),
+  contestId: z.string().min(1, "Contest assignment is required"),
   labLocation: z.string().optional(),
 });
 
@@ -23,7 +23,7 @@ const UpdateTeamSchema = z.object({
   displayName: z.string().min(1),
   username: z.string().min(3),
   password: z.string().optional(), // Optional password update
-  category: z.nativeEnum(Category),
+  contestId: z.string().min(1, "Contest assignment is required"),
   labLocation: z.string().optional(),
   isActive: z.string().transform((val) => val === "true"), // Handles boolean string from form
 });
@@ -57,7 +57,7 @@ export async function createTeamAction(formData: FormData) {
     displayName: formData.get("displayName"),
     username: formData.get("username"),
     password: formData.get("password"),
-    category: formData.get("category"),
+    contestId: formData.get("contestId"),
     labLocation: formData.get("labLocation"),
   };
 
@@ -67,11 +67,28 @@ export async function createTeamAction(formData: FormData) {
   const data = result.data;
 
   try {
+    // Fetch contest to derive category
+    const contest = await db.contest.findUnique({
+      where: { id: data.contestId },
+      include: {
+        problems: {
+          select: { category: true },
+          take: 1,
+        },
+      },
+    });
+
+    if (!contest) {
+      return { success: false, error: "Contest not found" };
+    }
+
+    // Derive category from contest's first problem (they should all be same category)
+    const category = contest.problems[0]?.category || "CORE";
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    // Atomic Creation of User (Login) and TeamProfile (Metadata)
+    // Atomic Creation of User, TeamProfile, and ContestRegistration
     await db.$transaction(async (tx) => {
-      await tx.user.create({
+      const user = await tx.user.create({
         data: {
           username: data.username,
           password_hash: hashedPassword,
@@ -79,12 +96,27 @@ export async function createTeamAction(formData: FormData) {
           team_profile: {
             create: {
               display_name: data.displayName,
-              category: data.category,
+              category: category,
               lab_location: data.labLocation || "Unknown",
+              assigned_contest_id: data.contestId,
             },
           },
         },
       });
+
+      // Create Contest Registration to link team to contest
+      await tx.contestRegistration.create({
+        data: {
+          user_id: user.id,
+          contest_id: data.contestId,
+        },
+      });
+    });
+
+    // Broadcast real-time update via WebSocket
+    await broadcastToWebSocket('CONTEST_UPDATE', {
+      action: 'team_create',
+      contestId: data.contestId
     });
 
     revalidatePath("/admin/teams");
@@ -106,7 +138,7 @@ export async function updateTeamAction(formData: FormData) {
     displayName: formData.get("displayName"),
     username: formData.get("username"),
     password: formData.get("password") || undefined,
-    category: formData.get("category"),
+    contestId: formData.get("contestId"),
     labLocation: formData.get("labLocation"),
     isActive: formData.get("isActive"),
   };
@@ -117,26 +149,82 @@ export async function updateTeamAction(formData: FormData) {
   const data = result.data;
 
   try {
+    // Fetch contest to derive category
+    const contest = await db.contest.findUnique({
+      where: { id: data.contestId },
+      include: {
+        problems: {
+          select: { category: true },
+          take: 1,
+        },
+      },
+    });
+
+    if (!contest) {
+      return { success: false, error: "Contest not found" };
+    }
+
+    // Get current team profile to check if contest changed
+    const currentProfile = await db.teamProfile.findUnique({
+      where: { user_id: data.id },
+      select: { assigned_contest_id: true },
+    });
+
+    // Derive category from contest's first problem
+    const category = contest.problems[0]?.category || "CORE";
+
     const updateData: any = {
       username: data.username,
       is_active: data.isActive,
       team_profile: {
         update: {
           display_name: data.displayName,
-          category: data.category,
+          category: category,
           lab_location: data.labLocation,
+          assigned_contest_id: data.contestId,
         },
       },
     };
 
-    // Only update password if a new one is typed (length check already done by Zod)
+    // Only update password if a new one is typed
     if (data.password && data.password.length > 0) {
       updateData.password_hash = await bcrypt.hash(data.password, 10);
     }
 
-    await db.user.update({
-      where: { id: data.id },
-      data: updateData,
+    await db.$transaction(async (tx) => {
+      // Update user and team profile
+      await tx.user.update({
+        where: { id: data.id },
+        data: updateData,
+      });
+
+      // Handle ContestRegistration if contest changed
+      if (currentProfile?.assigned_contest_id !== data.contestId) {
+        // Delete old registration if exists
+        if (currentProfile?.assigned_contest_id) {
+          await tx.contestRegistration.deleteMany({
+            where: {
+              user_id: data.id,
+              contest_id: currentProfile.assigned_contest_id,
+            },
+          });
+        }
+
+        // Create new registration
+        await tx.contestRegistration.create({
+          data: {
+            user_id: data.id,
+            contest_id: data.contestId,
+          },
+        });
+      }
+    });
+
+    // Broadcast real-time update via WebSocket
+    await broadcastToWebSocket('CONTEST_UPDATE', {
+      action: 'team_update',
+      contestId: data.contestId,
+      teamId: data.id
     });
 
     revalidatePath("/admin/teams");
@@ -225,10 +313,10 @@ export async function createContestAction(formData: FormData) {
       await tx.problem.createMany({ data: problemsToCreate });
     });
 
-    // Broadcast real-time update
-    broadcast({
-      event: 'CONTEST_UPDATE',
-      data: { action: 'create', contestId: createdContestId },
+    // Broadcast real-time update via WebSocket
+    await broadcastToWebSocket('CONTEST_UPDATE', {
+      action: 'create',
+      contestId: createdContestId
     });
 
     revalidatePath("/admin/contests");
@@ -287,11 +375,11 @@ export async function updateContestAction(input: FormData | { id: string;[key: s
       data: updateData,
     });
 
-    // Broadcast real-time update
+    // Broadcast real-time update via WebSocket
     console.log('[updateContestAction] Broadcasting CONTEST_UPDATE for:', contestId);
-    broadcast({
-      event: 'CONTEST_UPDATE',
-      data: { action: 'update', contestId },
+    await broadcastToWebSocket('CONTEST_UPDATE', {
+      action: 'update',
+      contestId
     });
     console.log('[updateContestAction] Broadcast sent');
 
@@ -309,7 +397,33 @@ export async function deleteContestAction(contestId: string) {
     return { success: false, error: "Unauthorized" };
 
   try {
-    // Transactionally delete all related entities (Problems, Submissions)
+    // Check if contest is currently running
+    const contest = await db.contest.findUnique({
+      where: { id: contestId },
+      select: {
+        startTime: true,
+        endTime: true,
+        isActive: true,
+      },
+    });
+
+    if (!contest) {
+      return { success: false, error: "Contest not found" };
+    }
+
+    const now = new Date();
+    const isRunning = contest.isActive &&
+      now >= contest.startTime &&
+      now <= contest.endTime;
+
+    if (isRunning) {
+      return {
+        success: false,
+        error: "Cannot delete a running contest. Please wait until it ends or deactivate it first."
+      };
+    }
+
+    // Transactionally delete all related entities (Problems, Submissions, Announcements)
     await db.$transaction(async (tx) => {
       // 1. Delete submissions related to problems in this contest
       const problems = await tx.problem.findMany({
@@ -378,10 +492,10 @@ export async function extendContestTime(
       },
     });
 
-    // Broadcast real-time update
-    broadcast({
-      event: 'CONTEST_UPDATE',
-      data: { action: 'time_extended', contestId },
+    // Broadcast real-time update via WebSocket
+    await broadcastToWebSocket('CONTEST_UPDATE', {
+      action: 'time_extended',
+      contestId
     });
 
     // Revalidate the Contests list and the specific Leaderboard page
@@ -391,5 +505,55 @@ export async function extendContestTime(
     return { success: true, newTime: newEndTime.toISOString() };
   } catch (e) {
     return { success: false, error: "Failed to extend contest time." };
+  }
+}
+
+/**
+ * Toggle Contest Freeze (Leaderboard Freeze)
+ * Freezes or unfreezes the leaderboard by setting/clearing frozenAt timestamp
+ */
+export async function toggleContestFreezeAction(
+  contestId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await getSession();
+    if (session?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Get current freeze status
+    const contest = await db.contest.findUnique({
+      where: { id: contestId },
+      select: { frozenAt: true },
+    });
+
+    if (!contest) {
+      return { success: false, error: "Contest not found" };
+    }
+
+    const isCurrentlyFrozen = contest.frozenAt !== null;
+
+    // Toggle: If frozen, unfreeze (null). If not frozen, freeze (now in UTC)
+    await db.contest.update({
+      where: { id: contestId },
+      data: {
+        frozenAt: isCurrentlyFrozen ? null : new Date() // UTC timestamp
+      },
+    });
+
+    // Broadcast real-time update via WebSocket
+    await broadcastToWebSocket('CONTEST_UPDATE', {
+      action: 'freeze_toggle',
+      contestId,
+      frozen: !isCurrentlyFrozen
+    });
+
+    revalidatePath("/admin/contests");
+    revalidatePath(`/leaderboard/${contestId}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error toggling contest freeze:", error);
+    return { success: false, error: "Failed to toggle freeze status" };
   }
 }

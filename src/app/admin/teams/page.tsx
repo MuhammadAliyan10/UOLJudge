@@ -26,6 +26,7 @@ const getTeamData = unstable_cache(
     return prisma.teamProfile.findMany({
       include: {
         user: { select: { id: true, username: true, is_active: true } },
+        assigned_contest: { select: { id: true, name: true } },  // NEW: Fetch contest info
       },
       orderBy: [{ total_score: "desc" }, { total_penalty: "asc" }],
     });

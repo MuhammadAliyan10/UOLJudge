@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -31,13 +31,12 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Loader2 } from "lucide-react";
-import { Category } from "@prisma/client";
 
 // --- Schema Definition ---
 const formSchema = z.object({
   displayName: z.string().min(3, "Team name must be at least 3 characters"),
   labLocation: z.string().optional(),
-  category: z.nativeEnum(Category, { message: "Category is required" }),
+  contestId: z.string().min(1, "Contest selection is required"),
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
@@ -47,6 +46,21 @@ type FormValues = z.infer<typeof formSchema>;
 export function CreateTeamDialog() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [contests, setContests] = useState<Array<{ id: string; name: string; startTime: Date }>>([]);
+
+  // Fetch available contests
+  useEffect(() => {
+    async function fetchContests() {
+      try {
+        const res = await fetch("/api/contests");
+        const data = await res.json();
+        setContests(data);
+      } catch (error) {
+        console.error("Failed to fetch contests:", error);
+      }
+    }
+    if (open) fetchContests();
+  }, [open]);
 
   // Initialize RHF Form
   const form = useForm<FormValues>({
@@ -54,7 +68,7 @@ export function CreateTeamDialog() {
     defaultValues: {
       displayName: "",
       labLocation: "",
-      category: "CORE",
+      contestId: "",
       username: "",
       password: "",
     },
@@ -69,7 +83,7 @@ export function CreateTeamDialog() {
     const formData = new FormData();
     formData.append("displayName", values.displayName);
     formData.append("labLocation", values.labLocation || "");
-    formData.append("category", values.category);
+    formData.append("contestId", values.contestId);
     formData.append("username", values.username);
     formData.append("password", values.password);
 
@@ -132,26 +146,34 @@ export function CreateTeamDialog() {
               />
             </div>
 
-            {/* Category */}
+            {/* Contest Assignment */}
             <FormField
               control={form.control}
-              name="category"
+              name="contestId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>Assigned Contest *</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select Category" />
+                        <SelectValue placeholder="Select Contest" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="CORE">Core Programming</SelectItem>
-                      <SelectItem value="WEB">Web Development</SelectItem>
-                      <SelectItem value="ANDROID">Android Dev</SelectItem>
+                      {contests.length === 0 ? (
+                        <SelectItem value="_loading" disabled>
+                          Loading contests...
+                        </SelectItem>
+                      ) : (
+                        contests.map((contest) => (
+                          <SelectItem key={contest.id} value={contest.id}>
+                            {contest.name} - {new Date(contest.startTime).toLocaleDateString()}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />

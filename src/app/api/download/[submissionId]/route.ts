@@ -38,11 +38,21 @@ export async function GET(
             );
         }
 
-        // 3. Security: Ensure file is in storage directory
-        const storagePath = path.join(process.cwd(), 'storage');
-        const absolutePath = path.resolve(submission.fileUrl);
+        // 3. Security: Ensure file is in public directory
+        const publicPath = path.join(process.cwd(), 'public');
+        let absolutePath = submission.fileUrl;
 
-        if (!absolutePath.startsWith(storagePath)) {
+        // Handle relative paths starting with /uploads
+        if (absolutePath.startsWith('/uploads')) {
+            absolutePath = path.join(process.cwd(), 'public', absolutePath);
+        } else if (!path.isAbsolute(absolutePath)) {
+            absolutePath = path.join(publicPath, absolutePath);
+        }
+
+        // Normalize path
+        absolutePath = path.resolve(absolutePath);
+
+        if (!absolutePath.startsWith(publicPath)) {
             return NextResponse.json(
                 { error: 'Access denied' },
                 { status: 403 }
@@ -66,8 +76,22 @@ export async function GET(
             );
         }
 
-        // 5. Get filename
-        const filename = path.basename(submission.fileUrl);
+        // 5. Get filename with custom naming logic
+        let filename = path.basename(submission.fileUrl);
+        const ext = path.extname(filename) || (submission.fileType.startsWith('.') ? submission.fileType : `.${submission.fileType}`);
+
+        const category = submission.problem.category;
+
+        if (category === 'CORE') {
+            // For CORE problems, use Problem Name
+            const safeTitle = submission.problem.title.replace(/[^a-zA-Z0-9-_]/g, '_');
+            filename = `${safeTitle}${ext}`;
+        } else if (category === 'WEB' || category === 'ANDROID') {
+            // For WEB/APK, use Team Name
+            const teamName = submission.user.team_profile?.display_name || 'UnknownTeam';
+            const safeTeamName = teamName.replace(/[^a-zA-Z0-9-_]/g, '_');
+            filename = `${safeTeamName}${ext}`;
+        }
 
         // 6. Create read stream and return file
         const fileStream = createReadStream(absolutePath);

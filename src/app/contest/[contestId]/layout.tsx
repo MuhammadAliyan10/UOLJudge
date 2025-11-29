@@ -30,6 +30,7 @@ export default async function ContestIdLayout({
             total_score: true,
             category: true,
             assigned_contest_id: true,
+            is_active: true,
         },
     });
 
@@ -127,14 +128,17 @@ export default async function ContestIdLayout({
 
     return (
         <ContestLayoutClient
+            teamId={session.userId}
             teamName={teamProfile.display_name}
             teamScore={teamProfile.total_score}
             teamCategory={teamProfile.category}
             contestId={contest.id}
             contestName={contest.name}
+            contestStartTime={contest.startTime} // Added
             contestEndTime={contest.endTime}
             isPaused={contest.isPaused}
             pausedAt={contest.pausedAt}
+            isBlocked={!teamProfile.is_active}
             problems={problems}
             submissionStatusMap={submissionStatusMap}
         >

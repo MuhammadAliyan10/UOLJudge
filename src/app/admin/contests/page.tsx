@@ -6,6 +6,8 @@ import {
   CheckCircle2,
   Clock,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   Table,
@@ -17,9 +19,11 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { CreateContestDialog } from "@/components/admin/contest/CreateContestDialog";
 import { ContestActions } from "@/components/admin/contest/ContestActions";
-import ContestTableRefresher from "@/components/admin/refreshTable/ContestTableRefresher"; // <-- Client Refresher
+import { ContestTimeline } from "@/components/admin/contest/ContestTimeline";
+import ContestTableRefresher from "@/components/admin/refreshTable/ContestTableRefresher";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -80,25 +84,40 @@ function ContestStatusBadge({ contest }: { contest: any }) {
 }
 
 // --- Main Server Component ---
-export default async function ContestsPage() {
-  // CRITICAL FETCH: Include problems for ManageProblemsDialog
-  const contests = await prisma.contest.findMany({
-    include: {
-      _count: { select: { problems: true } },
-      problems: {
-        orderBy: { orderIndex: "asc" },
-        select: {
-          id: true,
-          title: true,
-          category: true,
-          points: true,
-          assetsPath: true,
-          orderIndex: true, // Needed for problem mapping
+export default async function ContestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const params = await searchParams;
+  const page = parseInt(params.page || "1");
+  const perPage = 10;
+
+  // CRITICAL FETCH: Include problems for ManageProblemsDialog + add pagination
+  const [contests, totalCount] = await Promise.all([
+    prisma.contest.findMany({
+      include: {
+        _count: { select: { problems: true } },
+        problems: {
+          orderBy: { orderIndex: "asc" },
+          select: {
+            id: true,
+            title: true,
+            category: true,
+            points: true,
+            assetsPath: true,
+            orderIndex: true,
+          },
         },
       },
-    },
-    orderBy: { startTime: "desc" },
-  });
+      orderBy: { startTime: "desc" },
+      skip: (page - 1) * perPage,
+      take: perPage,
+    }),
+    prisma.contest.count(),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / perPage);
 
   return (
     <div className="space-y-6">
@@ -173,12 +192,11 @@ export default async function ContestsPage() {
                       </TableCell>
 
                       <TableCell>
-                        <div className="flex flex-col gap-1 text-sm text-slate-600">
-                          <div>
-                            Start: {contest.startTime.toLocaleString()}
-                          </div>
-                          <div>End: {contest.endTime.toLocaleString()}</div>
-                        </div>
+                        <ContestTimeline
+                          startTime={contest.startTime}
+                          endTime={contest.endTime}
+                          isActive={contest.isActive}
+                        />
                       </TableCell>
 
                       <TableCell className="text-center">
@@ -196,6 +214,47 @@ export default async function ContestsPage() {
               </TableBody>
             </Table>
           </CardContent>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
+              <div className="text-sm text-slate-600">
+                Page {page} of {totalPages} • {totalCount} total contests
+              </div>
+              <div className="flex gap-2">
+                <Link
+                  href={`?page=${page - 1}`}
+                  className={cn(
+                    page === 1 && "pointer-events-none opacity-50"
+                  )}
+                >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft size={16} className="mr-1" />
+                    Previous
+                  </Button>
+                </Link>
+                <Link
+                  href={`?page=${page + 1}`}
+                  className={cn(
+                    page === totalPages && "pointer-events-none opacity-50"
+                  )}
+                >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === totalPages}
+                  >
+                    Next
+                    <ChevronRight size={16} className="ml-1" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
         </ContestTableRefresher>
       </Card>
     </div>

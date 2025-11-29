@@ -206,8 +206,11 @@ export function CreateContestDialog() {
                         type="number"
                         min={1}
                         max={15}
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        value={field.value || ""}
+                        onChange={(e) => {
+                          const value = e.target.valueAsNumber;
+                          field.onChange(isNaN(value) ? "" : value);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -234,7 +237,7 @@ export function CreateContestDialog() {
   );
 }
 
-// --- Internal Reusable DateTime Component (Kept for integration) ---
+// --- Internal Reusable DateTime Component ---
 
 function DateTimePicker({
   value,
@@ -243,11 +246,33 @@ function DateTimePicker({
   value: Date;
   onChange: (date: Date) => void;
 }) {
+  // Validate date to prevent format errors
+  const isValidDate = value instanceof Date && !isNaN(value.getTime());
+  const safeValue = isValidDate ? value : new Date();
+
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const [hours, minutes] = e.target.value.split(":");
-    const newDate = new Date(value);
-    newDate.setHours(parseInt(hours));
-    newDate.setMinutes(parseInt(minutes));
+    const timeValue = e.target.value;
+
+    // Validate HH:MM format (prevent backslash crash)
+    if (!/^\d{2}:\d{2}$/.test(timeValue)) {
+      return; // Silently ignore invalid input
+    }
+
+    const [hours, minutes] = timeValue.split(":");
+    const hoursNum = parseInt(hours, 10);
+    const minutesNum = parseInt(minutes, 10);
+
+    // Validate time ranges
+    if (hoursNum < 0 || hoursNum > 23 || minutesNum < 0 || minutesNum > 59) {
+      return;
+    }
+
+    const newDate = new Date(safeValue);
+    newDate.setHours(hoursNum);
+    newDate.setMinutes(minutesNum);
+    newDate.setSeconds(0);
+    newDate.setMilliseconds(0);
+
     onChange(newDate);
   };
 
@@ -259,11 +284,11 @@ function DateTimePicker({
             variant={"outline"}
             className={cn(
               "w-full justify-start text-left font-normal border-slate-200",
-              !value && "text-muted-foreground"
+              !isValidDate && "text-muted-foreground"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
-            {value ? format(value, "PPP p") : <span>Pick a date</span>}
+            {isValidDate ? format(safeValue, "PPP p") : <span>Pick a date</span>}
           </Button>
         </FormControl>
       </PopoverTrigger>
@@ -271,8 +296,14 @@ function DateTimePicker({
         <Calendar
           mode="single"
           required={true}
-          selected={value}
-          onSelect={onChange}
+          selected={safeValue}
+          onSelect={(d) => d && onChange(d)}
+          disabled={(date) => {
+            // Disable past dates (client-side UX only)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return date < today;
+          }}
           initialFocus
           className="p-3 border-b border-slate-100"
         />
@@ -281,7 +312,7 @@ function DateTimePicker({
           <Input
             type="time"
             className="bg-white border-slate-200 h-8"
-            value={format(value, "HH:mm")}
+            value={isValidDate ? format(safeValue, "HH:mm") : "00:00"}
             onChange={handleTimeChange}
           />
         </div>

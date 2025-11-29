@@ -29,15 +29,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={cn(
-          // 3. Force Light Mode & Base Styles
-          "min-h-screen bg-white font-sans antialiased",
-          // inter.variable
-        )}
+        className="min-h-screen bg-white font-sans antialiased"
+        suppressHydrationWarning
       >
+        <Toaster position="top-right" />
         {children}
-
-        {/* 4. Notification System (Forced Light Mode) */}
         <Toaster
           position="top-right"
           theme="light"

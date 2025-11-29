@@ -256,18 +256,21 @@ export function LeaderboardClient({
                     <TableCell>
                       <div className="flex flex-wrap gap-2">
                         {team.solved_indexes.length > 0 ? (
-                          team.solved_indexes
-                            .sort((a, b) => a - b)
-                            .map((idx) => (
-                              <Badge
-                                key={idx}
-                                className="h-9 w-9 flex items-center justify-center rounded bg-emerald-600 hover:bg-emerald-700 text-white text-base font-bold shadow-sm border-0"
-                              >
-                                {getLetter(idx)}
-                              </Badge>
-                            ))
+                          <div className="flex flex-wrap gap-1.5">
+                            {team.solved_indexes
+                              .sort((a, b) => a - b)
+                              .map((idx) => (
+                                <div
+                                  key={idx}
+                                  className="h-8 w-8 flex items-center justify-center rounded bg-emerald-600 text-white text-sm font-bold shadow-sm"
+                                  title={`Problem ${getLetter(idx)} Solved`}
+                                >
+                                  {getLetter(idx)}
+                                </div>
+                              ))}
+                          </div>
                         ) : (
-                          <span className="text-slate-300 text-2xl font-light pl-2">
+                          <span className="text-slate-300 text-xl font-light pl-2">
                             -
                           </span>
                         )}

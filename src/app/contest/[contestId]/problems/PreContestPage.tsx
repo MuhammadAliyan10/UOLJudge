@@ -14,116 +14,92 @@ interface PreContestPageProps {
 }
 
 export function PreContestPage({ contestName, startTime, contestId }: PreContestPageProps) {
-    const [timeRemaining, setTimeRemaining] = useState('');
     const [isStartingSoon, setIsStartingSoon] = useState(false);
 
     useEffect(() => {
-        const updateCountdown = () => {
+        const checkStart = () => {
             const now = new Date();
             const start = new Date(startTime);
             const diff = start.getTime() - now.getTime();
 
             if (diff <= 0) {
-                // Contest has started, trigger refresh
                 window.location.reload();
                 return;
             }
 
             if (diff < 5 * 60 * 1000) setIsStartingSoon(true);
-
-            const hours = Math.floor(diff / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-            setTimeRemaining(
-                `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-            );
         };
 
-        updateCountdown();
-        const interval = setInterval(updateCountdown, 1000);
+        checkStart();
+        const interval = setInterval(checkStart, 1000);
         return () => clearInterval(interval);
     }, [startTime]);
 
     return (
         <div className="min-h-[70vh] flex items-center justify-center px-4">
-            <Card className="max-w-2xl w-full border-slate-200 shadow-lg">
-                <CardContent className="p-8 md:p-12">
-                    {/* Icon */}
-                    <div className="flex justify-center mb-6">
-                        <div className={`p-4 rounded-full ${isStartingSoon ? 'bg-amber-50 animate-pulse' : 'bg-blue-50'}`}>
+            <Card className="max-w-2xl w-full border-slate-200 shadow-xl bg-white/50 backdrop-blur-sm">
+                <CardContent className="p-8 md:p-12 text-center">
+                    <div className="mb-8 relative">
+                        <div className={`mx-auto w-24 h-24 rounded-full flex items-center justify-center mb-6 ${isStartingSoon ? 'bg-amber-100 animate-pulse' : 'bg-blue-50'}`}>
                             <CalendarClock
                                 size={48}
                                 className={isStartingSoon ? 'text-amber-600' : 'text-blue-600'}
                             />
                         </div>
+                        {isStartingSoon && (
+                            <Badge className="absolute top-0 right-1/2 translate-x-12 bg-amber-500 hover:bg-amber-600 text-white border-none animate-bounce">
+                                Starting Soon
+                            </Badge>
+                        )}
                     </div>
 
-                    {/* Title */}
-                    <div className="text-center space-y-3 mb-8">
-                        <Badge
-                            variant="outline"
-                            className={`${isStartingSoon ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-600 border-slate-200'} text-xs font-medium px-3 py-1`}
-                        >
-                            {isStartingSoon ? 'Starting Soon!' : 'Scheduled'}
-                        </Badge>
-                        <h1 className="text-3xl md:text-4xl font-bold text-slate-900">
-                            Contest Not Started
-                        </h1>
-                        <p className="text-slate-600 text-lg">
-                            {contestName}
-                        </p>
-                    </div>
+                    <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">
+                        {contestName}
+                    </h1>
 
-                    {/* Countdown */}
-                    <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-8 mb-6 border border-slate-200">
-                        <div className="flex items-center justify-center gap-2 mb-4">
-                            <Clock className="text-slate-500" size={20} />
-                            <span className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                Contest Starts In
-                            </span>
-                        </div>
-                        <div className={`text-center font-mono text-5xl md:text-6xl font-bold ${isStartingSoon ? 'text-amber-600 animate-pulse' : 'text-slate-800'}`}>
-                            {timeRemaining || '--:--:--'}
-                        </div>
-                        <div className="flex justify-center gap-8 mt-4 text-xs text-slate-500 uppercase tracking-wider">
-                            <span>Hours</span>
-                            <span>Minutes</span>
-                            <span>Seconds</span>
-                        </div>
-                    </div>
+                    <p className="text-xl text-slate-600 mb-8 max-w-lg mx-auto">
+                        The contest has not started yet. Please wait for the official start time.
+                    </p>
 
-                    {/* Info */}
-                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
-                        <p className="text-sm text-blue-900 text-center">
-                            <strong>Start Time:</strong> {new Date(startTime).toLocaleString('en-US', {
+                    <div className="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-100 inline-block w-full max-w-md">
+                        <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">
+                            Official Start Time
+                        </div>
+                        <div className="text-2xl font-bold text-slate-800">
+                            {new Date(startTime).toLocaleString('en-US', {
                                 weekday: 'long',
-                                year: 'numeric',
                                 month: 'long',
                                 day: 'numeric',
-                                hour: '2-digit',
+                                hour: 'numeric',
                                 minute: '2-digit',
                             })}
-                        </p>
+                        </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex gap-3 justify-center">
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                         <Button
-                            variant="outline"
+                            variant="default"
+                            size="lg"
+                            className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white gap-2"
                             asChild
-                            className="gap-2"
                         >
                             <Link href={`/leaderboard/${contestId}`} target="_blank">
-                                <Trophy size={16} />
+                                <Trophy size={18} />
                                 View Leaderboard
                             </Link>
                         </Button>
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            className="w-full sm:w-auto gap-2"
+                            onClick={() => window.location.reload()}
+                        >
+                            Check for Updates
+                        </Button>
                     </div>
 
-                    {/* Auto-refresh notice */}
-                    <p className="text-xs text-slate-400 text-center mt-6">
-                        This page will automatically refresh when the contest starts
+                    <p className="text-xs text-slate-400 mt-8 animate-pulse">
+                        System will automatically refresh when contest begins...
                     </p>
                 </CardContent>
             </Card>

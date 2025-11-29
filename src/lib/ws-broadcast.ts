@@ -1,33 +1,22 @@
-import WebSocket from 'ws';
-
 /**
  * Broadcast utility for sending WebSocket messages to all connected clients
- * Connects temporarily to the WebSocket server and sends the broadcast command
+ * Sends HTTP request to WebSocket server's broadcast endpoint
  */
 export async function broadcastContestUpdate(eventType: string, payload: any): Promise<void> {
-    return new Promise((resolve, reject) => {
-        const ws = new WebSocket('ws://localhost:3001');
-
-        ws.on('open', () => {
-            // Send broadcast command to server
-            ws.send(JSON.stringify({
-                type: 'BROADCAST',
-                event: eventType,
+    try {
+        await fetch('http://localhost:3001/broadcast', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                type: eventType,
                 payload,
-            }));
-
-            // Close connection after sending
-            setTimeout(() => {
-                ws.close();
-                resolve();
-            }, 100);
+            }),
         });
-
-        ws.on('error', (error) => {
-            console.error('Failed to broadcast:', error);
-            // Don't reject - broadcasting is non-critical
-            // The action should succeed even if broadcast fails
-            resolve();
-        });
-    });
+        console.log(`[WS Broadcast] Sent: ${eventType}`);
+    } catch (error) {
+        console.error(`[WS Broadcast] Failed for ${eventType}:`, error);
+        // Don't throw - broadcasting is non-critical
+    }
 }

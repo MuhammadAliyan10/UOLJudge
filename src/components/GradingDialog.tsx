@@ -46,6 +46,7 @@ interface GradingDialogProps {
         display_name: string;
       } | null;
     };
+    submittedAt: Date;
   };
 }
 
@@ -159,13 +160,41 @@ export function GradingDialog({ submission }: GradingDialogProps) {
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 overflow-hidden">
             {/* Left: File Viewer (3/5) */}
             <div className="lg:col-span-3 border-r border-slate-200 bg-slate-900 overflow-hidden flex flex-col relative">
-              <div className="absolute top-4 right-4 z-10">
+              {/* Top Bar with Copy Button */}
+              <div className="shrink-0 px-4 py-2 bg-slate-800 border-b border-slate-700 flex items-center justify-between">
                 <Badge
                   variant="outline"
                   className="bg-slate-800 text-slate-400 border-slate-700 font-mono text-xs"
                 >
                   Read-Only Preview
                 </Badge>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="ghost"
+                    className="text-slate-400 hover:text-white hover:bg-slate-700 h-7 text-xs"
+                  >
+                    <a href={`/api/download/${submission.id}`} download>
+                      <Download size={14} className="mr-1.5" /> Download
+                    </a>
+                  </Button>
+
+                  {!isBinary && fileContent && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        navigator.clipboard.writeText(fileContent);
+                        toast.success("Code copied to clipboard");
+                      }}
+                      className="text-slate-400 hover:text-white hover:bg-slate-700 h-7 text-xs"
+                    >
+                      <Download size={14} className="mr-1.5" /> Copy Code
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {isLoadingFile ? (
@@ -182,14 +211,14 @@ export function GradingDialog({ submission }: GradingDialogProps) {
                   <p className="font-medium text-lg">{error}</p>
                 </div>
               ) : isBinary ? (
+                /* Binary file - show download only */
                 <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
                   <Package size={64} className="mb-6 text-slate-600" />
                   <h3 className="text-xl font-medium text-white mb-2">
-                    Binary File Detected
+                    Binary or Compiled File
                   </h3>
                   <p className="text-sm text-slate-500 mb-8 max-w-sm text-center leading-relaxed">
-                    This file format cannot be previewed directly. Please
-                    download it to inspect locally.
+                    This file cannot be previewed as text. Download to inspect locally.
                   </p>
                   <Button
                     asChild
@@ -197,122 +226,151 @@ export function GradingDialog({ submission }: GradingDialogProps) {
                   >
                     <a
                       href={`/api/download/${submission.id}`}
-                      target="_blank"
-                      rel="noreferrer"
+                      download
                     >
-                      <Download size={18} className="mr-2" /> Download Artifact
+                      <Download size={18} className="mr-2" /> Download File
                     </a>
                   </Button>
                 </div>
               ) : (
-                <ScrollArea className="h-full">
-                  <pre className="p-8 text-sm font-mono text-slate-300 leading-relaxed whitespace-pre-wrap">
-                    <code>{fileContent}</code>
+                /* Text file - show with overflow */
+                <ScrollArea className="flex-1">
+                  <pre className="p-6 text-sm font-mono text-slate-300 leading-relaxed overflow-x-auto">
+                    <code className="block">{fileContent}</code>
                   </pre>
                 </ScrollArea>
               )}
             </div>
 
             {/* Right: Controls (2/5) */}
-            <div className="lg:col-span-2 bg-white p-8 overflow-y-auto flex flex-col gap-8">
-              {/* Score Display */}
-              <div className="bg-slate-50 rounded-xl p-6 border border-slate-100">
+            <div className="lg:col-span-2 bg-white overflow-y-auto flex flex-col">
+              {/* Submission Record */}
+              <div className="p-6 border-b border-slate-100 bg-slate-50/30">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
-                  Automated Grading
+                  Submission Record
                 </h4>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-slate-600">
-                    Calculated Score
-                  </span>
-                  <span className="text-3xl font-black text-primary tabular-nums">
-                    {submission.autoScore}
-                  </span>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-500">Team</span>
+                    <span className="text-sm font-medium text-slate-900">
+                      {submission.user.team_profile?.display_name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-500">Problem</span>
+                    <span className="text-sm font-medium text-slate-900">
+                      {submission.problem.title}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-500">Time</span>
+                    <span className="text-sm font-medium text-slate-900 font-mono">
+                      {new Date(submission.submittedAt).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
-                <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-primary w-full" />
-                </div>
-                <p className="text-xs text-slate-400 mt-3 text-right font-medium">
-                  Max possible: {submission.problem.points}
-                </p>
               </div>
 
-              {/* Manual Override */}
-              <div className="space-y-3">
-                <label className="text-sm font-semibold text-slate-900">
-                  Manual Override{" "}
-                  <span className="text-slate-400 font-normal ml-1">
-                    (Optional)
-                  </span>
-                </label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    min="0"
-                    max={submission.problem.points}
-                    value={manualScore}
-                    onChange={(e) => setManualScore(e.target.value)}
-                    placeholder="Enter custom score..."
-                    className="pl-4 pr-12 font-mono h-12 text-base"
+              <div className="p-8 flex flex-col gap-8 flex-1">
+                {/* Score Display */}
+                <div className="bg-slate-50 rounded-xl p-6 border border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+                    Automated Grading
+                  </h4>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-slate-600">
+                      Calculated Score
+                    </span>
+                    <span className="text-3xl font-black text-primary tabular-nums">
+                      {submission.autoScore}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-primary w-full" />
+                  </div>
+                  <p className="text-xs text-slate-400 mt-3 text-right font-medium">
+                    Max possible: {submission.problem.points}
+                  </p>
+                </div>
+
+                {/* Manual Override */}
+                <div className="space-y-3">
+                  <label className="text-sm font-semibold text-slate-900">
+                    Manual Override{" "}
+                    <span className="text-slate-400 font-normal ml-1">
+                      (Optional)
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="0"
+                      max={submission.problem.points}
+                      value={manualScore}
+                      onChange={(e) => setManualScore(e.target.value)}
+                      placeholder="Enter custom score..."
+                      className="pl-4 pr-12 font-mono h-12 text-base"
+                    />
+                    <span className="absolute right-4 top-3.5 text-xs text-slate-400 font-bold tracking-wider">
+                      PTS
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Leave empty to accept the auto-score of{" "}
+                    <strong className="text-slate-700">
+                      {submission.autoScore}
+                    </strong>
+                    .
+                  </p>
+                </div>
+
+                {/* Comments */}
+                <div className="space-y-3 flex-1">
+                  <label className="text-sm font-semibold text-slate-900">
+                    Jury Feedback
+                  </label>
+                  <Textarea
+                    value={juryComment}
+                    onChange={(e) => setJuryComment(e.target.value)}
+                    placeholder="Explain your decision (this will be visible to the team)..."
+                    className="min-h-[150px] resize-none text-sm p-4 leading-relaxed"
                   />
-                  <span className="absolute right-4 top-3.5 text-xs text-slate-400 font-bold tracking-wider">
-                    PTS
-                  </span>
                 </div>
-                <p className="text-xs text-slate-500">
-                  Leave empty to accept the auto-score of{" "}
-                  <strong className="text-slate-700">
-                    {submission.autoScore}
-                  </strong>
-                  .
-                </p>
-              </div>
 
-              {/* Comments */}
-              <div className="space-y-3 flex-1">
-                <label className="text-sm font-semibold text-slate-900">
-                  Jury Feedback
-                </label>
-                <Textarea
-                  value={juryComment}
-                  onChange={(e) => setJuryComment(e.target.value)}
-                  placeholder="Explain your decision (this will be visible to the team)..."
-                  className="min-h-[150px] resize-none text-sm p-4 leading-relaxed"
-                />
-              </div>
+                {/* Actions */}
+                <div className="grid grid-cols-2 gap-4 mt-auto pt-6 border-t border-slate-100">
+                  <Button
+                    onClick={() => handleGrade("REJECTED")}
+                    disabled={isGrading}
+                    variant="outline"
+                    className="border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 h-14 text-base font-semibold"
+                  >
+                    {isGrading ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <XCircle size={20} className="mr-2" />
+                    )}
+                    Reject
+                  </Button>
 
-              {/* Actions */}
-              <div className="grid grid-cols-2 gap-4 mt-auto pt-6 border-t border-slate-100">
-                <Button
-                  onClick={() => handleGrade("REJECTED")}
-                  disabled={isGrading}
-                  variant="outline"
-                  className="border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 h-14 text-base font-semibold"
-                >
-                  {isGrading ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : (
-                    <XCircle size={20} className="mr-2" />
-                  )}
-                  Reject
-                </Button>
-
-                <Button
-                  onClick={() => handleGrade("ACCEPTED")}
-                  disabled={isGrading}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white h-14 shadow-md shadow-emerald-100 text-base font-semibold"
-                >
-                  {isGrading ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : (
-                    <CheckCircle2 size={20} className="mr-2" />
-                  )}
-                  Accept
-                </Button>
+                  <Button
+                    onClick={() => handleGrade("ACCEPTED")}
+                    disabled={isGrading}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white h-14 shadow-md shadow-emerald-100 text-base font-semibold"
+                  >
+                    {isGrading ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <CheckCircle2 size={20} className="mr-2" />
+                    )}
+                    Accept
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
     </>
   );
 }

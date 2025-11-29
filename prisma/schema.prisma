@@ -89,6 +89,7 @@ model TeamProfile {
   total_penalty Int      @default(0)
   rank          Int?
   is_active     Boolean  @default(true)
+  is_blocked    Boolean  @default(false) @map("isBlocked")  // Kill Switch for real-time disqualification
   
   // Contest Assignment - Teams assigned to specific contests
   assigned_contest_id String?

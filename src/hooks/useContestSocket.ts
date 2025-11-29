@@ -6,6 +6,10 @@ export type ContestWSEventType =
     | "CONNECTION_ESTABLISHED"
     | "CONTEST_STATUS_UPDATE"
     | "LEADERBOARD_UPDATE"
+    | "SCORE_UPDATE"
+    | "CONTEST_UPDATE"
+    | "ADMIN_UPDATE"
+    | "TEAM_STATUS_UPDATE"
     | "TIME_UPDATE";
 
 export interface ContestStatusPayload {
@@ -14,6 +18,7 @@ export interface ContestStatusPayload {
     pausedAt?: string | null;
     endTime?: string;
     isFrozen?: boolean;
+    startTime?: string; // ISO string
 }
 
 export interface WSMessage<T = any> {
@@ -41,10 +46,18 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
     const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
 
     const connect = () => {
+        // Stop trying after 5 failed attempts if we never connected
+        if (reconnectAttempts.current > 5 && !wsRef.current) {
+            // Server not available - stop trying
+            return;
+        }
+
         try {
             const ws = new WebSocket(WS_URL);
+            let hasConnected = false;
 
             ws.onopen = () => {
+                hasConnected = true;
                 console.log("✓ Connected to contest WebSocket");
                 setIsConnected(true);
                 reconnectAttempts.current = 0;
@@ -80,15 +93,28 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
             };
 
             ws.onclose = () => {
-                console.log("✗ Disconnected from contest WebSocket");
+                // Only log if we previously connected (real disconnection)
+                // Silent if never connected (server not running)
+                if (hasConnected) {
+                    console.log("✗ Disconnected from contest WebSocket");
+                }
                 setIsConnected(false);
                 options.onDisconnect?.();
 
-                // Exponential backoff
+                // Exponential backoff up to 30 seconds
                 const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
                 reconnectAttempts.current++;
 
-                console.log(`Reconnecting in ${delay}ms... (attempt ${reconnectAttempts.current})`);
+                // Only log reconnection attempts if we previously connected
+                if (hasConnected && reconnectAttempts.current <= 3) {
+                    console.log(`Reconnecting in ${delay}ms... (attempt ${reconnectAttempts.current})`);
+                }
+
+                // Stop trying after 5 attempts if never connected
+                if (!hasConnected && reconnectAttempts.current > 5) {
+                    return; // Server not available
+                }
+
                 reconnectTimeoutRef.current = setTimeout(() => {
                     if (wsRef.current?.readyState === WebSocket.CLOSED) {
                         connect();
@@ -96,14 +122,18 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
                 }, delay);
             };
 
-            ws.onerror = (error) => {
-                console.error("WebSocket error:", error);
+            ws.onerror = () => {
+                // Silent - Pulse Engine not running is expected during development
+                // Only log if we previously connected (real error)
+                if (hasConnected) {
+                    console.warn("WebSocket connection lost");
+                }
                 ws.close();
             };
 
             wsRef.current = ws;
         } catch (error) {
-            console.error("Failed to create WebSocket connection:", error);
+            // Silent - expected when WebSocket server isn't running
         }
     };
 

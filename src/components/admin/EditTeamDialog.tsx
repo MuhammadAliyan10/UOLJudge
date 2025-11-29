@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -41,7 +41,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Loader2, Trash2, AlertTriangle } from "lucide-react";
-import { Category } from "@prisma/client";
 
 // --- Schema Definition ---
 const formSchema = z
@@ -50,7 +49,7 @@ const formSchema = z
     displayName: z.string().min(3, "Team name must be at least 3 characters"),
     username: z.string().min(3, "Username must be at least 3 characters"),
     labLocation: z.string().optional().nullable(),
-    category: z.nativeEnum(Category),
+    contestId: z.string().min(1, "Contest assignment is required"),
     isActive: z.string(),
     password: z.string().optional().or(z.literal("")),
   })
@@ -78,8 +77,8 @@ interface EditTeamDialogProps {
     is_active: boolean;
     team_profile: {
       display_name: string;
-      category: Category;
       lab_location: string | null;
+      assigned_contest_id: string | null;
     } | null;
   };
   open: boolean;
@@ -93,6 +92,21 @@ export function EditTeamDialog({
 }: EditTeamDialogProps) {
   const [loading, setLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [contests, setContests] = useState<Array<{ id: string; name: string; startTime: Date }>>([]);
+
+  // Fetch available contests
+  useEffect(() => {
+    async function fetchContests() {
+      try {
+        const res = await fetch("/api/contests");
+        const data = await res.json();
+        setContests(data);
+      } catch (error) {
+        console.error("Failed to fetch contests:", error);
+      }
+    }
+    if (open) fetchContests();
+  }, [open]);
 
   // Initialize RHF Form with existing data
   const form = useForm<FormValues>({
@@ -102,7 +116,7 @@ export function EditTeamDialog({
       displayName: team.team_profile?.display_name || "",
       username: team.username,
       labLocation: team.team_profile?.lab_location || "",
-      category: team.team_profile?.category || "CORE",
+      contestId: team.team_profile?.assigned_contest_id || "",
       isActive: team.is_active ? "true" : "false",
       password: "",
     },
@@ -119,7 +133,7 @@ export function EditTeamDialog({
     formData.append("displayName", values.displayName);
     formData.append("username", values.username);
     formData.append("labLocation", values.labLocation || "");
-    formData.append("category", values.category);
+    formData.append("contestId", values.contestId);
     formData.append("isActive", values.isActive);
 
     if (values.password && values.password.length > 0) {
@@ -196,14 +210,14 @@ export function EditTeamDialog({
               />
             </div>
 
-            {/* Category and Status */}
+            {/* Contest Assignment and Status */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="category"
+                name="contestId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Category</FormLabel>
+                    <FormLabel>Assigned Contest *</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
@@ -214,9 +228,17 @@ export function EditTeamDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="CORE">Core</SelectItem>
-                        <SelectItem value="WEB">Web</SelectItem>
-                        <SelectItem value="ANDROID">Android</SelectItem>
+                        {contests.length === 0 ? (
+                          <SelectItem value="_loading" disabled>
+                            Loading...
+                          </SelectItem>
+                        ) : (
+                          contests.map((contest) => (
+                            <SelectItem key={contest.id} value={contest.id}>
+                              {contest.name} - {new Date(contest.startTime).toLocaleDateString()}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />

@@ -7,7 +7,7 @@ import { getSession } from "@/lib/auth";
 import fs from "fs/promises";
 import path from "path";
 import { Category } from "@prisma/client";
-import { broadcast } from "@/lib/broadcast";
+import { broadcastToWebSocket } from "@/lib/ws-broadcast-client";
 
 // --- SCHEMA ---
 const CreateProblemSchema = z.object({
@@ -90,10 +90,10 @@ export async function createProblemAction(formData: FormData) {
       },
     });
 
-    // Broadcast real-time update
-    broadcast({
-      event: 'CONTEST_UPDATE',
-      data: { action: 'problem_create', contestId: data.contestId },
+    // Broadcast real-time update via WebSocket
+    await broadcastToWebSocket('CONTEST_UPDATE', {
+      action: 'problem_create',
+      contestId: data.contestId
     });
 
     revalidatePath("/admin/contests");
@@ -120,11 +120,11 @@ export async function deleteProblemAction(problemId: string) {
     const contestId = problem?.contestId;
     await db.problem.delete({ where: { id: problemId } });
 
-    // Broadcast real-time update
+    // Broadcast real-time update via WebSocket
     if (contestId) {
-      broadcast({
-        event: 'CONTEST_UPDATE',
-        data: { action: 'problem_delete', contestId },
+      await broadcastToWebSocket('CONTEST_UPDATE', {
+        action: 'problem_delete',
+        contestId
       });
     }
 

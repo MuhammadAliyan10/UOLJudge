@@ -74,7 +74,7 @@ export async function loginAction(
         const redirectTo =
             user.role === 'ADMIN' || user.role === 'JURY'
                 ? '/admin'
-                : '/contest/problems';
+                : '/contest'; // Auto-redirects to assigned contest
 
         return {
             success: true,
