@@ -27,21 +27,35 @@ import {
   Loader2,
   MessageSquare,
   FileCode,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function SubmissionsPage() {
+export default async function SubmissionsPage({
+  params,
+}: {
+  params: Promise<{ contestId: string }>;
+}) {
   // 1. Auth Check
   const session = await getSession();
   if (!session) {
     redirect("/login");
   }
 
-  // 2. Fetch Data
+  const { contestId } = await params;
+
+  // 2. Fetch Data (Filtered by Contest)
   const submissions = await prisma.submission.findMany({
-    where: { userId: session.userId },
+    where: {
+      userId: session.userId,
+      problem: {
+        contestId: contestId
+      }
+    },
     include: { problem: true },
     orderBy: { submittedAt: "desc" },
   });
@@ -53,16 +67,16 @@ export default async function SubmissionsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">
             My Submissions
           </h1>
-          <p className="text-slate-500 mt-1">
+          <p className="text-slate-500 mt-1 text-lg">
             Track your submission history and jury feedback.
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm text-sm text-slate-500">
-          <History size={16} className="text-slate-400" />
-          <span className="font-bold text-slate-900">
+        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm text-sm text-slate-500">
+          <History size={18} className="text-blue-500" />
+          <span className="font-bold text-slate-900 text-lg">
             {submissions.length}
           </span>{" "}
           Total Attempts
@@ -73,9 +87,9 @@ export default async function SubmissionsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Table Section (Left) */}
         <div className="lg:col-span-2">
-          <Card className="border-slate-200 shadow-sm overflow-hidden">
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100">
-              <CardTitle className="text-lg text-slate-800 flex items-center gap-2">
+          <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-4">
+              <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
                 <FileCode size={18} className="text-slate-500" />
                 Submission Log
               </CardTitle>
@@ -96,35 +110,41 @@ export default async function SubmissionsPage() {
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow className="hover:bg-transparent border-slate-100">
-                      <TableHead>Problem</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead className="text-right">Verdict</TableHead>
+                    <TableRow className="hover:bg-transparent border-slate-100 bg-slate-50/30">
+                      <TableHead className="font-semibold text-slate-600">Problem</TableHead>
+                      <TableHead className="font-semibold text-slate-600">Time</TableHead>
+                      <TableHead className="text-right font-semibold text-slate-600">Verdict</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {submissions.map((submission) => (
                       <TableRow
                         key={submission.id}
-                        className="hover:bg-slate-50/50 group"
+                        className="hover:bg-slate-50/80 group transition-colors border-slate-100"
                       >
                         {/* Problem */}
                         <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-slate-900">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors">
                               {submission.problem.title}
                             </span>
-                            <span className="text-xs text-slate-500 font-mono">
-                              {submission.fileType || "Unknown"}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded">
+                                {submission.fileType || "Unknown"}
+                              </span>
+                              {/* Download Link (Optional) */}
+                              <Link href={`/api/download/${submission.id}`} target="_blank" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Download size={12} className="text-slate-400 hover:text-blue-600" />
+                              </Link>
+                            </div>
                           </div>
                         </TableCell>
 
                         {/* Time */}
                         <TableCell>
-                          <div className="flex items-center gap-1.5 text-slate-600">
-                            <Clock size={12} className="text-slate-400" />
-                            <span className="text-xs font-medium tabular-nums">
+                          <div className="flex items-center gap-1.5 text-slate-500">
+                            <Clock size={14} className="text-slate-400" />
+                            <span className="text-sm font-medium tabular-nums">
                               {new Date(
                                 submission.submittedAt
                               ).toLocaleTimeString([], {
@@ -136,9 +156,9 @@ export default async function SubmissionsPage() {
                         </TableCell>
 
                         {/* Verdict */}
-                        {/* <TableCell className="text-right">
-                          <VerdictBadge verdict={submission.verdick} />
-                        </TableCell> */}
+                        <TableCell className="text-right">
+                          <VerdictBadge verdict={submission.status} />
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -151,8 +171,8 @@ export default async function SubmissionsPage() {
         {/* Feedback Section (Right) */}
         <div className="lg:col-span-1 space-y-6">
           <Card className="border-slate-200 shadow-sm h-full bg-slate-50/50">
-            <CardHeader className="border-b border-slate-100">
-              <CardTitle className="text-base text-slate-800 flex items-center gap-2">
+            <CardHeader className="border-b border-slate-100 bg-white py-4">
+              <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
                 <MessageSquare size={18} className="text-blue-500" />
                 Jury Feedback
               </CardTitle>
@@ -160,27 +180,31 @@ export default async function SubmissionsPage() {
                 Comments from admins on your manual reviews.
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 px-4">
               {feedbackItems.length === 0 ? (
-                <p className="text-sm text-slate-400 italic text-center py-8">
-                  No feedback received yet.
-                </p>
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <MessageSquare size={24} className="text-slate-300 mb-2" />
+                  <p className="text-sm text-slate-400 italic">
+                    No feedback received yet.
+                  </p>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {feedbackItems.map((s) => (
                     <div
                       key={s.id}
-                      className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm"
+                      className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden"
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-semibold text-slate-900">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+                      <div className="flex justify-between items-start mb-2 pl-2">
+                        <span className="text-sm font-bold text-slate-900 line-clamp-1">
                           {s.problem.title}
                         </span>
-                        <span className="text-[10px] text-slate-400">
-                          {new Date(s.submittedAt).toLocaleDateString()}
+                        <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap ml-2">
+                          {new Date(s.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      <p className="text-sm text-slate-600 leading-relaxed bg-blue-50/50 p-3 rounded border border-blue-100/50">
+                      <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100 ml-2">
                         {s.juryComment}
                       </p>
                     </div>
@@ -215,16 +239,14 @@ function VerdictBadge({ verdict }: { verdict: SubmissionStatus }) {
       icon: Loader2,
       label: "Pending",
     },
-
-
   };
 
-  const { style, icon: Icon, label } = config[verdict];
+  const { style, icon: Icon, label } = config[verdict] || config.PENDING;
 
   return (
     <Badge
       variant="outline"
-      className={cn("gap-1.5 pl-1.5 pr-2.5 py-0.5 font-medium", style)}
+      className={cn("gap-1.5 pl-1.5 pr-2.5 py-0.5 font-medium transition-colors", style)}
     >
       <Icon size={12} className={verdict === "PENDING" ? "animate-spin" : ""} />
       {label}

@@ -73,7 +73,7 @@ export function LambdaGauge({ value, max, title, unit, threshold = 70 }: LambdaG
             <CardContent>
                 <div className="flex flex-col items-center">
                     {/* Gauge Chart */}
-                    <ResponsiveContainer width="100%" height={150}>
+                    <ResponsiveContainer width="100%" height={160}>
                         <PieChart>
                             <Pie
                                 data={data}

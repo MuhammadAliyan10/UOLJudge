@@ -34,23 +34,10 @@ export default async function AdminDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Welcome Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm border border-slate-200">
-        <div className="relative z-10">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
-            Admin Control Center
-          </h1>
-          <p className="text-slate-500 text-lg max-w-2xl">
-            Monitor the competition health, manage teams, and oversee the
-            grading pipeline in real-time.
-          </p>
-        </div>
-        {/* Decorative Gradient Blob */}
-        <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-bl from-blue-50 to-transparent opacity-50 pointer-events-none" />
-      </div>
+
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
         <StatCard
           title="Active Contests"
           value={activeContests}
@@ -75,8 +62,7 @@ export default async function AdminDashboard() {
           bg="bg-amber-50"
           desc="Awaiting jury grading"
         />
-        {/* System Health Monitor (Client Component) */}
-        <SystemHealthCard />
+
       </div>
 
       {/* System Health Monitoring with Charts */}

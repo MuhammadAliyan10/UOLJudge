@@ -4,19 +4,11 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
+import { cn } from "@/lib/utils";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
-
-const titles: Record<string, string> = {
-  "/admin": "Dashboard",
-  "/admin/contests": "Contest Management",
-  "/admin/teams": "Team Overview",
-  "/admin/grading": "Jury Grading",
-  "/admin/logs": "System Logs",
-  "/admin/settings": "Platform Settings",
-};
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
@@ -41,8 +33,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     return () => clearInterval(interval);
   }, []);
 
-  const currentTitle = titles[pathname] || "Dashboard";
-
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden text-slate-900 font-sans">
       <Sidebar
@@ -53,9 +43,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       />
 
       {/* MAIN CONTENT WRAPPER */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden transition-all duration-300">
+      <div
+        className={cn(
+          "flex-1 flex flex-col h-screen overflow-hidden transition-all duration-300 ease-in-out",
+          isCollapsed ? "lg:ml-[72px]" : "lg:ml-[260px]"
+        )}
+      >
         <Header
-          currentTitle={currentTitle}
+          currentTitle="" // Prop kept for interface compatibility but unused
           currentTime={currentTime}
           toggleMobileSidebar={toggleMobileSidebar}
         />

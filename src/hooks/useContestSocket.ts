@@ -31,6 +31,8 @@ export interface UseContestSocketOptions {
     onStatusUpdate?: (payload: ContestStatusPayload) => void;
     onLeaderboardUpdate?: (payload: any) => void;
     onTimeUpdate?: (payload: { endTime: string }) => void;
+    onContestUpdate?: (payload: any) => void;
+    onAdminUpdate?: (payload: any) => void;
     onConnect?: () => void;
     onDisconnect?: () => void;
 }
@@ -79,6 +81,12 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
                             break;
                         case "TIME_UPDATE":
                             options.onTimeUpdate?.(message.payload);
+                            break;
+                        case "CONTEST_UPDATE":
+                            options.onContestUpdate?.(message.payload);
+                            break;
+                        case "ADMIN_UPDATE":
+                            options.onAdminUpdate?.(message.payload);
                             break;
                         default:
                             // Handle generic updates if needed

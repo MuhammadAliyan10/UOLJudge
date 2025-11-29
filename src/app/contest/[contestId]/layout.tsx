@@ -1,7 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { db as prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { ContestLayoutClient } from "./ContestLayoutClient";
+import { ContestLayoutClient } from "../ContestLayoutClient"; // Import from parent directory
 import { SubmissionStatus } from "@prisma/client";
 
 interface ContestIdLayoutProps {
@@ -71,6 +71,7 @@ export default async function ContestIdLayout({
             isActive: true,
             isPaused: true,
             pausedAt: true,
+            isFrozen: true, // Fetch isFrozen
         },
     });
 
@@ -88,59 +89,20 @@ export default async function ContestIdLayout({
     const now = new Date();
     const hasEnded = now > contest.endTime;
 
-    if (hasEnded) {
-        redirect(`/leaderboard/${contest.id}`);
-    }
-
-    // 6. Fetch Problems (Filtered by Category) for Sidebar
-    const problems = await prisma.problem.findMany({
-        where: {
-            contestId: contest.id,
-            category: teamProfile.category,
-        },
-        select: {
-            id: true,
-            title: true,
-            orderIndex: true,
-        },
-        orderBy: { orderIndex: "asc" },
-    });
-
-    // 7. Fetch Submission Statuses for Sidebar Indicators
-    const submissions = await prisma.submission.findMany({
-        where: {
-            userId: session.userId,
-            problemId: { in: problems.map((p) => p.id) },
-        },
-        select: {
-            problemId: true,
-            status: true,
-        },
-        orderBy: { submittedAt: "desc" },
-        distinct: ["problemId"], // Get latest status per problem
-    });
-
-    // Create a map of problemId -> status
-    const submissionStatusMap: Record<string, SubmissionStatus> = {};
-    submissions.forEach((s) => {
-        submissionStatusMap[s.problemId] = s.status;
-    });
+    // if (hasEnded) {
+    //     redirect(`/leaderboard/${contest.id}`);
+    // }
 
     return (
         <ContestLayoutClient
-            teamId={session.userId}
             teamName={teamProfile.display_name}
             teamScore={teamProfile.total_score}
             teamCategory={teamProfile.category}
             contestId={contest.id}
-            contestName={contest.name}
-            contestStartTime={contest.startTime} // Added
+            contestStartTime={contest.startTime}
             contestEndTime={contest.endTime}
             isPaused={contest.isPaused}
-            pausedAt={contest.pausedAt}
-            isBlocked={!teamProfile.is_active}
-            problems={problems}
-            submissionStatusMap={submissionStatusMap}
+            isFrozen={contest.isFrozen} // Pass isFrozen
         >
             {children}
         </ContestLayoutClient>

@@ -160,6 +160,9 @@ model Contest {
   announcements Announcement[]        @relation("ContestAnnouncements")
   registrations ContestRegistration[] // NEW: Link back to teams
   assigned_teams TeamProfile[] @relation("AssignedTeams")
+
+  // NEW: Category for the contest itself (to default new problems)
+  category   Category @default(CORE)
 }
 
 model Problem {
