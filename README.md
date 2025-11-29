@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 UOLJudge Deployment Runbook
 
-## Getting Started
+**Objective:** Deploy the UOLJudge system in an offline-first, production-ready Docker environment.
 
-First, run the development server:
+## 📋 Prerequisites
+
+1.  **Docker Desktop**: Ensure Docker Desktop is installed and running.
+    *   [Download for Mac/Windows](https://www.docker.com/products/docker-desktop/)
+
+## 🛠️ Deployment Steps
+
+### 1. Launch the System
+Open your terminal in the project root and run:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker-compose up -d --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+*   `up`: Starts the containers.
+*   `-d`: Detached mode (runs in background).
+*   `--build`: Forces a rebuild of the images to ensure latest code.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 2. Verify Status
+Check if all services are running (db, app, ws-server):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+docker-compose ps
+```
 
-## Learn More
+You should see 3 services with status `Up`.
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Access the Application
+*   **Web App**: [http://localhost:3000](http://localhost:3000)
+*   **Admin Panel**: [http://localhost:3000/admin](http://localhost:3000/admin)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. View Logs
+To monitor the application logs in real-time:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+docker-compose logs -f
+```
 
-## Deploy on Vercel
+To view logs for a specific service (e.g., the app):
+```bash
+docker-compose logs -f app
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🧪 Stress Testing (Chaos Test)
+To verify system stability under load:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1.  Ensure the app is running (`docker-compose up -d`).
+2.  Run the chaos script:
+
+```bash
+npx tsx scripts/chaos-test.ts
+```
+
+This will simulate 50 concurrent users hitting the server. Look for "✅ SYSTEM STABLE".
+
+## 🆘 Disaster Recovery & Persistence
+
+### Database Persistence
+All database data is stored in the `./pg-data` folder in your project root. **This folder is your lifeblood.**
+
+### Backup
+To backup the database, simply copy the `pg-data` folder to a secure location (e.g., a USB drive).
+
+```bash
+# Stop containers first to ensure data integrity
+docker-compose down
+
+# Copy folder
+cp -r pg-data /path/to/backup/location/
+```
+
+### Restore
+1.  Stop containers: `docker-compose down`
+2.  Delete existing `pg-data` (if corrupted).
+3.  Copy your backup `pg-data` folder back to the project root.
+4.  Start containers: `docker-compose up -d`
+
+## 🛑 Shutdown
+To stop all services:
+
+```bash
+docker-compose down
+```
