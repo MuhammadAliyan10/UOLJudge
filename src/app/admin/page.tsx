@@ -12,6 +12,9 @@ import {
 import SystemHealthCard from "@/features/admin/components/dashboard/SystemHealthCard";
 import HealthChartsCard from "@/features/admin/components/dashboard/HealthChartsCard";
 
+// Force dynamic rendering (requires DB at runtime)
+export const dynamic = "force-dynamic";
+
 // Server Component (Direct DB Access)
 export default async function AdminDashboard() {
   // 1. Fetch Real-Time Stats

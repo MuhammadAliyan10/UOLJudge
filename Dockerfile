@@ -1,32 +1,51 @@
 FROM node:20-slim AS base
 
-# Install dependencies only when needed
+# 1. Install Dependencies
 FROM base AS deps
-# Install OpenSSL for Prisma
-# We unset proxy variables to avoid issues with stale or incorrect Docker proxy settings
-RUN unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY && \
-    apt-get update -y && \
-    apt-get install -y openssl ca-certificates
+# Override any proxy settings from Docker daemon
+ARG http_proxy=""
+ARG https_proxy=""
+ARG HTTP_PROXY=""
+ARG HTTPS_PROXY=""
+ARG no_proxy="*"
+ARG NO_PROXY="*"
+RUN apt-get update -y && apt-get install -y openssl ca-certificates
 WORKDIR /app
-
-# Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
-# Use npm install instead of ci to be more robust with platform binaries
-RUN npm install
+# Clean install
+RUN npm ci
 
-# Rebuild the source code only when needed
+# 2. Build the App
 FROM base AS builder
+# Install OpenSSL for Prisma
+ARG http_proxy=""
+ARG https_proxy=""
+ARG HTTP_PROXY=""
+ARG HTTPS_PROXY=""
+ARG no_proxy="*"
+ARG NO_PROXY="*"
+RUN apt-get update -y && apt-get install -y openssl libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-# Rebuild lightningcss to ensure correct platform binary
-RUN npm rebuild lightningcss || npm install lightningcss --force
 COPY . .
 
+# Generate Prisma Client (Critical for DB access)
+RUN npx prisma generate
+
 # Build Next.js
+# Note: We skip type checking for speed in production build if you are confident
 RUN npm run build
 
-# Production image, copy all the files and run next
+# 3. Production Runner
 FROM base AS runner
+# Install OpenSSL for Prisma runtime
+ARG http_proxy=""
+ARG https_proxy=""
+ARG HTTP_PROXY=""
+ARG HTTPS_PROXY=""
+ARG no_proxy="*"
+ARG NO_PROXY="*"
+RUN apt-get update -y && apt-get install -y openssl libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -35,21 +54,26 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Copy Public Assets
 COPY --from=builder /app/public ./public
 
-# Set the correct permission for prerender cache
+# Set permissions
 RUN mkdir .next
 RUN chown nextjs:nodejs .next
 
-# Automatically leverage output traces to reduce image size
+# Copy Standalone Output
+# This is the "Magic" folder Next.js creates
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy WebSocket server source (TypeScript)
+# Copy Server Code (For WebSocket Engine)
 COPY --from=builder --chown=nextjs:nodejs /app/server ./server
 
-# Install 'ws' and 'tsx' for the WebSocket server
-# We install them as production dependencies in the runner
+# Copy Prisma Folder (For Seeding)
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+
+# Install Runtime Deps for WebSocket
+# We install 'ws' and 'tsx' explicitly in the runner
 COPY package.json ./
 RUN npm install ws tsx --no-save
 
@@ -61,4 +85,5 @@ EXPOSE 3001
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+# Default command (Overridden by docker-compose)
 CMD ["node", "server.js"]
