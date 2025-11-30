@@ -120,10 +120,11 @@ export async function GET(
         }
 
         // 4. Validate Path (Security Check)
-        const filePath = path.join(process.cwd(), problem.assetsPath);
+        // assetsPath is already an absolute path from problem creation
+        const filePath = problem.assetsPath;
 
-        if (!isPathSafe(problem.assetsPath)) {
-            console.error(`[ASSETS_API] Path traversal attempt detected: ${problem.assetsPath}`);
+        if (!isPathSafe(filePath)) {
+            console.error(`[ASSETS_API] Path traversal attempt detected: ${filePath}`);
             return NextResponse.json(
                 { error: 'Forbidden: Invalid file path' },
                 { status: 403 }

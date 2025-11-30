@@ -1,5 +1,5 @@
-import { getPendingSubmissions } from "@/server/actions/jury";
-import { getRetryRequests } from "@/server/actions/retry-system";
+import { getPendingSubmissions } from "@/server/actions/jury/jury-dashboard";
+import { getRetryRequests } from "@/server/actions/submission/retry-system";
 import { SubmissionsClient } from "./SubmissionsClient";
 
 export const dynamic = "force-dynamic";

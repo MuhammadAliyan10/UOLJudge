@@ -1,6 +1,6 @@
-import { getAssignedContests } from "@/server/actions/jury";
-import { getJuryDashboardStats, getRecentLogs } from "@/server/actions/jury-stats";
-import { getRetryRequests } from "@/server/actions/retry-system";
+import { getAssignedContests } from "@/server/actions/jury/jury-dashboard";
+import { getJuryDashboardStats, getRecentLogs } from "@/server/actions/jury/jury-stats";
+import { getRetryRequests } from "@/server/actions/submission/retry-system";
 import { JuryDashboardClient } from "./DashboardClient";
 
 export const dynamic = "force-dynamic";

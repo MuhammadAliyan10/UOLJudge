@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoginSchema, type LoginInput } from "@/lib/schemas";
-import { loginAction } from "@/server/actions/auth";
+import { loginAction } from "@/server/actions/auth/auth";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
@@ -15,12 +15,12 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-} from "@/components/ui/card";
+} from "@/features/shared/ui/card";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/features/shared/ui/button";
+import { Input } from "@/features/shared/ui/input";
+import { Label } from "@/features/shared/ui/label";
+import { Alert, AlertDescription } from "@/features/shared/ui/alert";
 
 export default function LoginPage() {
   const router = useRouter();

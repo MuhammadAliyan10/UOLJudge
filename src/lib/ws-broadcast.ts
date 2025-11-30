@@ -14,7 +14,6 @@ export async function broadcastContestUpdate(eventType: string, payload: any): P
                 payload,
             }),
         });
-        console.log(`[WS Broadcast] Sent: ${eventType}`);
     } catch (error) {
         console.error(`[WS Broadcast] Failed for ${eventType}:`, error);
         // Don't throw - broadcasting is non-critical

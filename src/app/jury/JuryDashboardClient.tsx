@@ -9,13 +9,13 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+} from "@/features/shared/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/features/shared/ui/card";
+import { Badge } from "@/features/shared/ui/badge";
+import { Button } from "@/features/shared/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { useContestSocket } from "@/hooks/useContestSocket";
+import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 

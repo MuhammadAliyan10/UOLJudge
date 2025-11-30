@@ -2,10 +2,11 @@ import { ReactNode } from "react";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Shield } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/features/shared/ui/avatar";
 import Link from "next/link";
-import { LogoutButton } from "@/components/jury/LogoutButton";
-import { JuryNavigation } from "@/components/jury/JuryNavigation";
+import { LogoutButton } from "@/features/jury/components/LogoutButton";
+import { JuryNavigation } from "@/features/jury/components/JuryNavigation";
+import { JuryWebSocketListener } from "@/features/jury/components/JuryWebSocketListener";
 
 export default async function JuryLayout({ children }: { children: ReactNode }) {
     const session = await getSession();
@@ -78,6 +79,9 @@ export default async function JuryLayout({ children }: { children: ReactNode }) 
                 {/* Navigation Tabs */}
                 <JuryNavigation />
             </header>
+
+            {/* WebSocket Listener for Real-time Updates */}
+            <JuryWebSocketListener />
 
             {/* Main Content */}
             <main>{children}</main>

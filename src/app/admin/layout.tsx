@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import Sidebar from "./components/Sidebar";
-import Header from "./components/Header";
+import Sidebar from "@/features/admin/components/dashboard/Sidebar";
+import Header from "@/features/admin/components/dashboard/Header";
 import { cn } from "@/lib/utils";
 
 interface AdminLayoutProps {

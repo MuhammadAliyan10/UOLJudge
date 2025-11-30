@@ -5,9 +5,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+} from "@/features/shared/ui/card";
+import { Badge } from "@/features/shared/ui/badge";
+import { Separator } from "@/features/shared/ui/separator";
 import {
   Users,
   Trophy,

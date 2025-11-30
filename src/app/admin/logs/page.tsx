@@ -6,9 +6,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+} from "@/features/shared/ui/table";
+import { Card, CardContent } from "@/features/shared/ui/card";
+import { Badge } from "@/features/shared/ui/badge";
 import {
   ScrollText,
   LogIn,

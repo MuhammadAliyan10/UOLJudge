@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import { getSubmissionForGrading, getSubmissionGradingHistory } from "@/server/actions/jury";
-import { GradingInterface } from "@/components/jury/GradingInterface";
+import { getSubmissionForGrading, getSubmissionGradingHistory } from "@/server/actions/jury/jury-dashboard";
+import { GradingInterface } from "@/features/jury/components/GradingInterface";
 
 export const dynamic = "force-dynamic";
 

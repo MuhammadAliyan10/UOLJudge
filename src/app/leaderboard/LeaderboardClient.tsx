@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Category } from "@prisma/client";
 import { cn } from "@/lib/utils";
+import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
 import {
   WifiOff,
   Cpu,
@@ -20,9 +21,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+} from "@/features/shared/ui/table";
+import { Badge } from "@/features/shared/ui/badge";
+import { Card } from "@/features/shared/ui/card";
 
 // --- ANIMATED DIGIT COMPONENT ---
 // This component handles the "sliding" animation
@@ -73,13 +74,16 @@ interface LeaderboardClientProps {
 }
 
 export function LeaderboardClient({
-  teams,
+  teams: initialTeams,
   contestName,
   contestEndTime,
   isFrozen,
   category,
 }: LeaderboardClientProps) {
   const router = useRouter();
+
+  // State for teams data - initialize with server data
+  const [teams, setTeams] = useState<Team[]>(initialTeams);
 
   // State for individual digits to drive the ticker
   const [timeDigits, setTimeDigits] = useState({
@@ -91,17 +95,22 @@ export function LeaderboardClient({
   const getLetter = (idx: number) => String.fromCharCode(65 + idx);
   const CategoryIcon = category === "WEB" ? Globe : category === "ANDROID" ? Smartphone : Cpu;
 
-  // Real-time updates via SSE
+  // Real-time updates via WebSocket - update state directly
+  useContestSocket({
+    onLeaderboardUpdate: (payload) => {
+      // Refresh from server to get updated data
+      router.refresh();
+    },
+    onSubmissionUpdate: () => {
+      // Refresh from server to get updated scores
+      router.refresh();
+    },
+  });
+
+  // Update teams when initialTeams prop changes (from router.refresh())
   useEffect(() => {
-    const eventSource = new EventSource('/api/events');
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.event === 'SCORE_UPDATE') router.refresh();
-      } catch (error) { console.error(error); }
-    };
-    return () => eventSource.close();
-  }, [router]);
+    setTeams(initialTeams);
+  }, [initialTeams]);
 
   // Timer Logic
   useEffect(() => {

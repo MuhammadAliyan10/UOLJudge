@@ -1,15 +1,15 @@
 "use client";
 
 import { Calendar, AlertCircle, Users, CheckCircle2, Clock, Hand } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/features/shared/ui/card";
+import { Badge } from "@/features/shared/ui/badge";
+import { Button } from "@/features/shared/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { useContestSocket } from "@/hooks/useContestSocket";
+import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/features/shared/ui/scroll-area";
 
 interface Contest {
     id: string;

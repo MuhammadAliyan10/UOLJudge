@@ -1,6 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getCompletedContests } from "@/server/actions/ceremony";
+import { getCompletedContests } from "@/server/actions/admin/ceremony";
 import ResultsClient from "./ResultsClient";
 
 export const dynamic = "force-dynamic";

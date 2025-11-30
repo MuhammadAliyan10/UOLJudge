@@ -9,8 +9,8 @@ import {
   ArrowRight,
   Clock,
 } from "lucide-react";
-import SystemHealthCard from "./components/SystemHealthCard";
-import HealthChartsCard from "./components/HealthChartsCard";
+import SystemHealthCard from "@/features/admin/components/dashboard/SystemHealthCard";
+import HealthChartsCard from "@/features/admin/components/dashboard/HealthChartsCard";
 
 // Server Component (Direct DB Access)
 export default async function AdminDashboard() {

@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Category } from "@prisma/client";
 import { cn } from "@/lib/utils";
-import ContestHeader from "./components/ContestHeader";
-import ContestNotStarted from "./components/ContestNotStarted";
-import ContestEnded from "./components/ContestEnded";
-import { useContestSocket } from "@/hooks/useContestSocket";
+import ContestHeader from "@/features/contest/components/ContestHeader";
+import ContestNotStarted from "@/features/contest/components/ContestNotStarted";
+import ContestEnded from "@/features/contest/components/ContestEnded";
+import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
 import { AlertTriangle } from "lucide-react";
 
 interface ContestLayoutClientProps {

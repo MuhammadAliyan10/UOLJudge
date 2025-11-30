@@ -1,8 +1,8 @@
 import { getSession } from "@/lib/auth";
 import { db as prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { PausedOverlay } from "@/components/contest/PausedOverlay";
-import { SubmissionCard } from "@/components/contest/SubmissionCard";
+import { PausedOverlay } from "@/features/contest/components/PausedOverlay";
+import { SubmissionCard } from "@/features/contest/components/SubmissionCard";
 import {
     Table,
     TableBody,
@@ -10,10 +10,13 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@/features/shared/ui/table";
+import { Badge } from "@/features/shared/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/features/shared/ui/card";
 import { format } from "date-fns";
+import Link from "next/link";
+import { ArrowLeft, Download } from "lucide-react";
+import { Button } from "@/features/shared/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -76,17 +79,60 @@ export default async function ProblemDetailPage({
 
     return (
         <div className="space-y-8 pb-12">
-            {/* Header */}
+            {/* Back Button */}
             <div>
-                <div className="flex items-center gap-3 mb-2">
-                    <Badge variant="outline" className="text-slate-500">
-                        {problem.category}
-                    </Badge>
-                    <Badge variant="secondary" className="font-mono">
-                        {problem.points} PTS
-                    </Badge>
+                <Link href={`/contest/${contestId}/problems`}>
+                    <Button variant="ghost" size="sm" className="gap-2">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Problems
+                    </Button>
+                </Link>
+            </div>
+
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <div className="flex items-center gap-3 mb-2">
+                        <Badge variant="outline" className="text-slate-500">
+                            {problem.category}
+                        </Badge>
+                        <Badge variant="secondary" className="font-mono">
+                            {problem.points} PTS
+                        </Badge>
+                    </div>
+                    <h1 className="text-3xl font-bold text-slate-900">{problem.title}</h1>
                 </div>
-                <h1 className="text-3xl font-bold text-slate-900">{problem.title}</h1>
+
+                {/* PDF Buttons (if contentUrl exists) */}
+                {problem.contentUrl && (
+                    <div className="flex gap-2">
+                        <Button
+                            variant="default"
+                            size="sm"
+                            className="gap-2"
+                            asChild
+                        >
+                            <Link href={problem.contentUrl} target="_blank">
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                View PDF
+                            </Link>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            asChild
+                        >
+                            <Link href={problem.contentUrl} download target="_blank">
+                                <Download className="h-4 w-4" />
+                                Download
+                            </Link>
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {/* Description */}

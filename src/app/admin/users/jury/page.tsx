@@ -1,4 +1,4 @@
-import { getJuryMembersWithAssignments } from "@/server/actions/jury-management";
+import { getJuryMembersWithAssignments } from "@/server/actions/jury/jury-management";
 import { Shield, Users, Calendar, ShieldPlus } from "lucide-react";
 import {
     Table,
@@ -7,11 +7,11 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { CreateJuryDialog } from "@/components/admin/jury/CreateJuryDialog";
-import { JuryActions } from "@/components/admin/jury/JuryActions";
+} from "@/features/shared/ui/table";
+import { Card, CardContent } from "@/features/shared/ui/card";
+import { Badge } from "@/features/shared/ui/badge";
+import { CreateJuryDialog } from "@/features/admin/components/jury/CreateJuryDialog";
+import { JuryActions } from "@/features/admin/components/jury/JuryActions";
 
 export const dynamic = "force-dynamic";
 

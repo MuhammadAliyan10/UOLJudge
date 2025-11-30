@@ -7,18 +7,18 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+} from "@/features/shared/ui/table";
+import { Card, CardContent } from "@/features/shared/ui/card";
+import { Badge } from "@/features/shared/ui/badge";
+import { Input } from "@/features/shared/ui/input";
+import { Button } from "@/features/shared/ui/button";
 import { cn } from "@/lib/utils";
-import { CreateTeamDialog } from "@/components/admin/CreateTeamDialog";
-import { TeamActions } from "@/components/admin/TeamActions";
-import { BulkImportDialog } from "@/components/admin/BulkImportDialog";
-import { CeremonyExportButton } from "@/components/admin/CeremonyExportButton";
+import { CreateTeamDialog } from "@/features/admin/components/teams/CreateTeamDialog";
+import { TeamActions } from "@/features/admin/components/teams/TeamActions";
+import { BulkImportDialog } from "@/features/admin/components/teams/BulkImportDialog";
+import { CeremonyExportButton } from "@/features/admin/components/dashboard/CeremonyExportButton";
 import { unstable_cache } from "next/cache";
-import AdminTableRefresher from "@/components/admin/refreshTable/AdminTableRefresher";
+import AdminTableRefresher from "@/features/admin/components/refreshTable/AdminTableRefresher";
 
 export const dynamic = "force-dynamic";
 

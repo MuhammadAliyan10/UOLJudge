@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Category, SubmissionStatus } from "@prisma/client";
-import { SubmitDialog } from "@/components/SubmitDialog";
+import { SubmitDialog } from "@/features/contest/components/SubmitDialog";
 import {
   Clock,
   HardDrive,
@@ -24,10 +24,10 @@ import {
   CardContent,
   CardFooter,
   CardHeader,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+} from "@/features/shared/ui/card";
+import { Badge } from "@/features/shared/ui/badge";
+import { Button } from "@/features/shared/ui/button";
+import { Separator } from "@/features/shared/ui/separator";
 import { cn } from "@/lib/utils";
 
 interface Problem {

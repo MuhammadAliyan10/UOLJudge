@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { generateCeremony } from "@/server/actions/ceremony";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { generateCeremony } from "@/server/actions/admin/ceremony";
+import { Button } from "@/features/shared/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/features/shared/ui/card";
+import { Badge } from "@/features/shared/ui/badge";
 import { Download, Loader2, Trophy, Calendar, Users } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";

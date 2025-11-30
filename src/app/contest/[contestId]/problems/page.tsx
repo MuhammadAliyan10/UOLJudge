@@ -1,13 +1,13 @@
 import { getSession } from "@/lib/auth";
 import { db as prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { PausedOverlay } from "@/components/contest/PausedOverlay";
+import { PausedOverlay } from "@/features/contest/components/PausedOverlay";
 import { PreContestPage } from "./PreContestPage";
 import { PostContestPage } from "./PostContestPage";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle, CardContent } from "@/features/shared/ui/card";
+import { Badge } from "@/features/shared/ui/badge";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";

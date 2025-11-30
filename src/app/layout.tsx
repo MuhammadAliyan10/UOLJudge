@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-// import { Inter } from "next/font/google"; // Disabled for offline/docker build stability
+
 import "./globals.css";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";

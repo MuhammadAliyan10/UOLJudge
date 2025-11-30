@@ -18,15 +18,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { CreateContestDialog } from "@/components/admin/contest/CreateContestDialog";
-import { ContestActions } from "@/components/admin/contest/ContestActions";
-import { ContestTimeline } from "@/components/admin/contest/ContestTimeline";
-import ContestTableRefresher from "@/components/admin/refreshTable/ContestTableRefresher";
+} from "@/features/shared/ui/table";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/features/shared/ui/card";
+import { Badge } from "@/features/shared/ui/badge";
+import { Button } from "@/features/shared/ui/button";
+import { Input } from "@/features/shared/ui/input";
+import { CreateContestDialog } from "@/features/admin/components/contests/CreateContestDialog";
+import { ContestActions } from "@/features/admin/components/contests/ContestActions";
+import { ContestTimeline } from "@/features/admin/components/contests/ContestTimeline";
+import ContestTableRefresher from "@/features/admin/components/refreshTable/ContestTableRefresher";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";

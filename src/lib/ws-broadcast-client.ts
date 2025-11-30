@@ -19,7 +19,6 @@ export async function broadcastToWebSocket(type: string, payload: any): Promise<
                 payload,
             }),
         });
-        console.log(`[WS Broadcast] Sent: ${type}`);
     } catch (error) {
         console.error(`[WS Broadcast] Failed for ${type}:`, error);
         // Don't throw - broadcasting is non-critical

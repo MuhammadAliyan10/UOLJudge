@@ -10,11 +10,11 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from "@/features/shared/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/features/shared/ui/card";
+import { Badge } from "@/features/shared/ui/badge";
+import { Button } from "@/features/shared/ui/button";
+import { Input } from "@/features/shared/ui/input";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 

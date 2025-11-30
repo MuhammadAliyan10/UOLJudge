@@ -4,25 +4,25 @@ import { useState } from "react";
 import {
   createProblemAction,
   deleteProblemAction,
-} from "@/server/actions/problems";
+} from "@/server/actions/contest/problem-management";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from "@/features/shared/ui/dialog";
+import { Button } from "@/features/shared/ui/button";
+import { Input } from "@/features/shared/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+} from "@/features/shared/ui/select";
+import { Label } from "@/features/shared/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/features/shared/ui/radio-group";
 import { toast } from "sonner";
 import { Plus, Trash2, FileText, StickyNote, Loader2 } from "lucide-react";
 import { Category } from "@prisma/client";

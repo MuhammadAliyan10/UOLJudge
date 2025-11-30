@@ -1,4 +1,4 @@
-import { getAllGradedSubmissions } from "@/server/actions/jury-stats";
+import { getAllGradedSubmissions } from "@/server/actions/jury/jury-stats";
 import { HistoryClient } from "./HistoryClient";
 
 export const dynamic = "force-dynamic";

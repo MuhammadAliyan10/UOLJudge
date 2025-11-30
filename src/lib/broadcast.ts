@@ -21,7 +21,6 @@ const activeClients = new Set<ReadableStreamDefaultController>();
  */
 export function registerClient(controller: ReadableStreamDefaultController) {
     activeClients.add(controller);
-    console.log(`[SSE] Client registered. Total clients: ${activeClients.size}`);
 }
 
 /**
@@ -29,7 +28,6 @@ export function registerClient(controller: ReadableStreamDefaultController) {
  */
 export function unregisterClient(controller: ReadableStreamDefaultController) {
     activeClients.delete(controller);
-    console.log(`[SSE] Client disconnected. Total clients: ${activeClients.size}`);
 }
 
 /**
@@ -44,7 +42,6 @@ export function broadcast(event: BroadcastEvent) {
 
     const message = `data: ${JSON.stringify(payload)}\n\n`;
 
-    console.log(`[SSE] Broadcasting to ${activeClients.size} clients:`, event.event);
 
     // Send to all active clients
     activeClients.forEach((controller) => {
@@ -52,7 +49,6 @@ export function broadcast(event: BroadcastEvent) {
             controller.enqueue(message);
         } catch (error) {
             // Client disconnected - remove from registry
-            console.log('[SSE] Removing dead client connection');
             activeClients.delete(controller);
         }
     });
