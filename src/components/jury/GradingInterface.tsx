@@ -22,12 +22,16 @@ import {
     GripVertical,
     History,
     MessageSquare,
+    Copy,
+    Hand,
 } from "lucide-react";
 import { toast } from "sonner";
 import { gradeSubmissionAction } from "@/server/actions/jury-grading";
 import { getSubmissionPreview } from "@/server/actions/grading";
+import { grantRetry } from "@/server/actions/retry-system";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface GradingInterfaceProps {
     submission: any;
@@ -43,6 +47,7 @@ interface GradingInterfaceProps {
 export function GradingInterface({ submission, history }: GradingInterfaceProps) {
     const router = useRouter();
     const [grading, setGrading] = useState(false);
+    const [grantingRetry, setGrantingRetry] = useState(false);
     const [comment, setComment] = useState("");
     const [fileContent, setFileContent] = useState<string | null>(null);
     const [isBinary, setIsBinary] = useState(false);
@@ -139,10 +144,51 @@ export function GradingInterface({ submission, history }: GradingInterfaceProps)
         return map[fileType] || "plaintext";
     };
 
+    const handleCopyCode = () => {
+        if (fileContent) {
+            navigator.clipboard.writeText(fileContent);
+            toast.success("Code copied to clipboard!");
+        }
+    };
+
+    const handleGrantRetry = async () => {
+        if (!confirm("Grant retry request for this team? They will be able to submit again.")) {
+            return;
+        }
+
+        setGrantingRetry(true);
+
+        try {
+            const result = await grantRetry(submission.id);
+
+            if (result.success) {
+                toast.success(result.message || "Retry granted successfully");
+                router.refresh();
+            } else {
+                toast.error(result.error || "Failed to grant retry");
+            }
+        } catch (error) {
+            console.error("Error granting retry:", error);
+            toast.error("An error occurred while granting retry");
+        } finally {
+            setGrantingRetry(false);
+        }
+    };
+
     return (
         <div className="h-[calc(100vh-4rem)] p-6">
-            <div className="h-full max-w-[1600px] mx-auto">
-                <PanelGroup direction="horizontal" className="h-full gap-6">
+            <div className="h-full max-w-[1600px] mx-auto space-y-4">
+                {/* Retry Request Alert */}
+                {submission.retryRequested && !submission.canRetry && (
+                    <Alert className="border-orange-300 bg-orange-50">
+                        <Hand className="h-4 w-4 text-orange-600" />
+                        <AlertDescription className="ml-2 text-orange-900">
+                            <strong>Retry Request:</strong> {submission.retryReason || "No reason provided"}
+                        </AlertDescription>
+                    </Alert>
+                )}
+
+                <PanelGroup direction="horizontal" className="h-[calc(100%-3rem)] gap-6">
                     {/* LEFT PANEL - Code Viewer (60%) */}
                     <Panel defaultSize={60} minSize={40}>
                         <Card className="h-full border-slate-200 shadow-sm flex flex-col">
@@ -153,12 +199,25 @@ export function GradingInterface({ submission, history }: GradingInterfaceProps)
                                             <FileCode size={18} className="text-purple-600" />
                                             Code Inspector
                                         </CardTitle>
-                                        <Badge
-                                            variant="outline"
-                                            className="font-mono text-xs bg-slate-100 text-slate-700 border-slate-300"
-                                        >
-                                            {submission.fileType.toUpperCase()}
-                                        </Badge>
+                                        <div className="flex items-center gap-2">
+                                            {!isBinary && fileContent && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={handleCopyCode}
+                                                    className="h-7 px-2 text-xs"
+                                                >
+                                                    <Copy size={12} className="mr-1" />
+                                                    Copy
+                                                </Button>
+                                            )}
+                                            <Badge
+                                                variant="outline"
+                                                className="font-mono text-xs bg-slate-100 text-slate-700 border-slate-300"
+                                            >
+                                                {submission.fileType.toUpperCase()}
+                                            </Badge>
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4 text-xs">
                                         <div className="flex items-center gap-2 text-slate-600">
@@ -189,7 +248,7 @@ export function GradingInterface({ submission, history }: GradingInterfaceProps)
                                         <p className="text-xs text-slate-400 text-center max-w-md">
                                             This file cannot be previewed. Download it to review the submission.
                                         </p>
-                                        <a href={submission.fileUrl} download>
+                                        <a href={`/api/download/${submission.id}`} download>
                                             <Button className="bg-purple-600 hover:bg-purple-700 text-white">
                                                 <Download size={14} className="mr-2" />
                                                 Download File
@@ -312,6 +371,18 @@ export function GradingInterface({ submission, history }: GradingInterfaceProps)
                                                 REJECT
                                             </Button>
                                         </div>
+
+                                        {/* Grant Retry Button */}
+                                        {submission.retryRequested && !submission.canRetry && (
+                                            <Button
+                                                onClick={handleGrantRetry}
+                                                disabled={grantingRetry}
+                                                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold h-10 shadow-sm mt-2"
+                                            >
+                                                <Hand size={16} className="mr-2" />
+                                                {grantingRetry ? "Granting..." : "Grant Retry Request"}
+                                            </Button>
+                                        )}
                                     </div>
                                 </CardContent>
                             </Card>

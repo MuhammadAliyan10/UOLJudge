@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { generateCeremonyHTML } from "@/server/actions/ceremony";
+import { generateCeremony } from "@/server/actions/ceremony";
 import { toast } from "sonner";
 
 interface CeremonyExportButtonProps {
@@ -21,30 +21,22 @@ export function CeremonyExportButton({
         setIsLoading(true);
 
         try {
-            const result = await generateCeremonyHTML(contestId);
+            const result = await generateCeremony(contestId);
 
-            if (result.success && result.html) {
-                // Download the HTML file
-                const blob = new Blob([result.html], { type: "text/html" });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `ceremony_${contestName.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.html`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
+            // Download the HTML file
+            const blob = new Blob([result.html], { type: "text/html" });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = result.filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
 
-                toast.success("Ceremony artifact generated!", {
-                    description: result.filePath
-                        ? `Saved to ${result.filePath}`
-                        : "HTML file downloaded successfully",
-                });
-            } else {
-                toast.error("Failed to generate ceremony", {
-                    description: result.error || "Unknown error occurred",
-                });
-            }
+            toast.success("Ceremony generated!", {
+                description: "Interactive HTML downloaded successfully",
+            });
         } catch (error: any) {
             console.error("Ceremony export error:", error);
             toast.error("Export failed", {

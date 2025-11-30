@@ -1,26 +1,33 @@
 import { ReactNode } from "react";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { Shield, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Shield } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
 import { LogoutButton } from "@/components/jury/LogoutButton";
+import { JuryNavigation } from "@/components/jury/JuryNavigation";
 
 export default async function JuryLayout({ children }: { children: ReactNode }) {
     const session = await getSession();
 
-    // Double-check authorization (middleware already protects, but defense in depth)
+    // Middleware already protects this route
+    // During revalidation, session might transiently be null - don't redirect in that case
     if (!session || session.role !== "JURY") {
-        redirect("/login");
+        console.warn("Session missing in jury layout - this may indicate a revalidation issue");
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+                <div className="max-w-md w-full bg-white border border-yellow-200 rounded-lg p-8 text-center shadow-lg">
+                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Session Issue</h2>
+                    <p className="text-slate-600 mb-6">
+                        Please refresh the page or{" "}
+                        <a href="/login" className="text-blue-600 hover:underline">
+                            log in again
+                        </a>
+                        .
+                    </p>
+                </div>
+            </div>
+        );
     }
 
     const initials = session.username
@@ -49,44 +56,27 @@ export default async function JuryLayout({ children }: { children: ReactNode }) 
 
                     <div className="flex items-center gap-4">
                         {/* User Menu */}
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    className="flex items-center gap-3 h-10 px-3 hover:bg-slate-100"
-                                >
-                                    <Avatar className="h-8 w-8 border-2 border-purple-200">
-                                        <AvatarFallback className="bg-purple-100 text-purple-700 text-xs font-bold">
-                                            {initials}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex flex-col items-start">
-                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400 leading-none">
-                                            Jury
-                                        </span>
-                                        <code className="text-sm font-mono font-bold text-purple-600 leading-none mt-0.5">
-                                            {session.username}
-                                        </code>
-                                    </div>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 bg-white border-slate-200">
-                                <DropdownMenuLabel className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                                    Account
-                                </DropdownMenuLabel>
-                                <DropdownMenuSeparator className="bg-slate-100" />
-                                <DropdownMenuItem disabled className="text-slate-500">
-                                    <User size={14} className="mr-2" />
-                                    Profile Settings
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator className="bg-slate-100" />
-                                <div className="px-2 py-1.5">
-                                    <LogoutButton />
-                                </div>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center gap-3 px-3 h-10">
+                            <Avatar className="h-8 w-8 border-2 border-purple-200">
+                                <AvatarFallback className="bg-purple-100 text-purple-700 text-xs font-bold">
+                                    {initials}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col items-start">
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 leading-none">
+                                    Jury
+                                </span>
+                                <code className="text-sm font-mono font-bold text-purple-600 leading-none mt-0.5">
+                                    {session.username}
+                                </code>
+                            </div>
+                        </div>
+                        <LogoutButton />
                     </div>
                 </div>
+
+                {/* Navigation Tabs */}
+                <JuryNavigation />
             </header>
 
             {/* Main Content */}

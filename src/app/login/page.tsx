@@ -203,7 +203,7 @@ export default function LoginPage() {
                     <Input
                       id="password"
                       type="password"
-                      autoComplete="current-password"
+                      autoComplete="off"
                       placeholder="Enter your password"
                       className="h-11 transition-all duration-200 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                       {...register("password")}

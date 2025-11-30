@@ -13,7 +13,9 @@ export type ContestWSEventType =
     | "TIME_UPDATE"
     | "NEW_SUBMISSION"
     | "JURY_QUEUE_UPDATE"
-    | "SUBMISSION_UPDATE";
+    | "SUBMISSION_UPDATE"
+    | "RETRY_REQUESTED"
+    | "RETRY_GRANTED";
 
 export interface ContestStatusPayload {
     contestId: string;
@@ -39,6 +41,8 @@ export interface UseContestSocketOptions {
     onNewSubmission?: (payload: { submissionId: string; contestId: string; problemId: string; teamName: string }) => void;
     onJuryQueueUpdate?: (payload: { contestId: string; action: string }) => void;
     onSubmissionUpdate?: (payload: { submissionId: string; status: string; judgedById: string }) => void;
+    onRetryRequested?: (payload: { submissionId: string; teamName: string; reason: string; problemTitle: string; contestId: string }) => void;
+    onRetryGranted?: (payload: { submissionId: string; contestId: string; grantedBy: string }) => void;
     onConnect?: () => void;
     onDisconnect?: () => void;
 }
@@ -102,6 +106,12 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
                             break;
                         case "SUBMISSION_UPDATE":
                             options.onSubmissionUpdate?.(message.payload);
+                            break;
+                        case "RETRY_REQUESTED":
+                            options.onRetryRequested?.(message.payload);
+                            break;
+                        case "RETRY_GRANTED":
+                            options.onRetryGranted?.(message.payload);
                             break;
                         default:
                             // Handle generic updates if needed

@@ -32,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { RequestRetryButton } from "@/components/contest/RequestRetryButton";
 
 export const dynamic = "force-dynamic";
 
@@ -114,6 +115,7 @@ export default async function SubmissionsPage({
                       <TableHead className="font-semibold text-slate-600">Problem</TableHead>
                       <TableHead className="font-semibold text-slate-600">Time</TableHead>
                       <TableHead className="text-right font-semibold text-slate-600">Verdict</TableHead>
+                      <TableHead className="text-right font-semibold text-slate-600">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -158,6 +160,28 @@ export default async function SubmissionsPage({
                         {/* Verdict */}
                         <TableCell className="text-right">
                           <VerdictBadge verdict={submission.status} />
+                          {submission.retryRequested && !submission.canRetry && (
+                            <Badge variant="outline" className="ml-2 bg-orange-50 text-orange-700 border-orange-200 text-xs">
+                              Retry Requested
+                            </Badge>
+                          )}
+                          {submission.canRetry && (
+                            <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200 text-xs">
+                              Retry Granted
+                            </Badge>
+                          )}
+                        </TableCell>
+
+                        {/* Actions */}
+                        <TableCell className="text-right">
+                          {submission.status === "REJECTED" &&
+                            !submission.canRetry &&
+                            !submission.retryRequested && (
+                              <RequestRetryButton
+                                submissionId={submission.id}
+                                problemTitle={submission.problem.title}
+                              />
+                            )}
                         </TableCell>
                       </TableRow>
                     ))}

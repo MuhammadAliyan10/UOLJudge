@@ -43,7 +43,9 @@ interface PendingSubmission {
 async function requireJury() {
     const session = await getSession();
     if (!session || session.role !== UserRole.JURY) {
-        throw new Error("Unauthorized: Jury access required");
+        // During revalidation, session might be transiently null
+        // Return null instead of throwing to allow graceful degradation
+        return null;
     }
     return session;
 }
@@ -59,6 +61,7 @@ async function requireJury() {
  */
 export async function getAssignedContests(): Promise<AssignedContest[]> {
     const session = await requireJury();
+    if (!session) return []; // Graceful degradation during revalidation
 
     try {
         // Fetch contests where this jury is assigned
@@ -109,6 +112,7 @@ export async function getAssignedContests(): Promise<AssignedContest[]> {
  */
 export async function getPendingSubmissions(): Promise<PendingSubmission[]> {
     const session = await requireJury();
+    if (!session) return []; // Graceful degradation during revalidation
 
     try {
         // First, get assigned contest IDs
@@ -192,6 +196,11 @@ export async function getPendingSubmissions(): Promise<PendingSubmission[]> {
  */
 export async function getSubmissionForGrading(submissionId: string) {
     const session = await requireJury();
+    if (!session) {
+        // If session is null, it means the user is not authorized as a jury.
+        // Throw an error consistent with the function's error handling for unauthorized access.
+        throw new Error("Unauthorized: Jury session not found.");
+    }
 
     try {
         const submission = await prisma.submission.findUnique({

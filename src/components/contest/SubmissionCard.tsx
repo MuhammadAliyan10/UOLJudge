@@ -208,7 +208,7 @@ export function SubmissionCard({
                     {isSubmissionDisabled && (
                         <div className="p-3 bg-green-50 border border-green-200 rounded-md">
                             <p className="text-sm text-green-700 font-medium">
-                                ✅ Solution already submitted! Contact admin if you need to resubmit.
+                                ✅ Solution already submitted! Contact jury if you need to resubmit.
                             </p>
                         </div>
                     )}
@@ -216,7 +216,7 @@ export function SubmissionCard({
                     {canRetry && (
                         <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                             <p className="text-sm text-yellow-700 font-medium">
-                                ⚠️ Admin has allowed you to resubmit for this problem.
+                                ⚠️ Jury has allowed you to resubmit for this problem.
                             </p>
                         </div>
                     )}

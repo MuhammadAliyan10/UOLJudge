@@ -5,7 +5,11 @@ import { createReadStream, statSync } from 'fs';
 import path from 'path';
 
 // ============================================================
-// SECURE FILE DOWNLOAD ENDPOINT
+// SECURE FILE DOWNLOAD ENDPOINT - The "Secure Stream"
+// Z-Gate Security:
+// - Admin: Full access
+// - Jury: Must be assigned to submission's contest
+// - Participant: Can only download own submissions
 // ============================================================
 
 export async function GET(
@@ -15,20 +19,32 @@ export async function GET(
     const params = await context.params;
 
     try {
-        // 1. Verify user is ADMIN or JURY
+        // 1. SESSION CHECK
         const session = await getSession();
-
-        if (!session || (session.role !== 'ADMIN' && session.role !== 'JURY')) {
+        if (!session) {
             return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 403 }
+                { error: 'Unauthorized: Login required' },
+                { status: 401 }
             );
         }
 
         // 2. Find submission in DB
         const submission = await prisma.submission.findUnique({
             where: { id: params.submissionId },
-            include: { problem: true, user: { include: { team_profile: true } } },
+            include: {
+                problem: {
+                    select: {
+                        category: true,
+                        title: true,
+                        contestId: true
+                    }
+                },
+                user: {
+                    include: {
+                        team_profile: true
+                    }
+                }
+            },
         });
 
         if (!submission) {
@@ -38,7 +54,34 @@ export async function GET(
             );
         }
 
-        // 3. Security: Ensure file is in public directory
+        // 3. Z-GATE AUTHORIZATION CHECK
+        let authorized = false;
+
+        if (session.role === 'ADMIN') {
+            // Admins have full access
+            authorized = true;
+        } else if (session.role === 'JURY') {
+            // Jury must be assigned to this contest
+            const assignment = await prisma.juryAssignment.findFirst({
+                where: {
+                    userId: session.userId,
+                    contestId: submission.problem.contestId,
+                },
+            });
+            authorized = !!assignment;
+        } else if (session.role === 'PARTICIPANT') {
+            // Participants can only download their own submissions
+            authorized = submission.userId === session.userId;
+        }
+
+        if (!authorized) {
+            return NextResponse.json(
+                { error: 'Access denied: You do not have permission to download this file' },
+                { status: 403 }
+            );
+        }
+
+        // 4. Security: Ensure file is in public directory
         const publicPath = path.join(process.cwd(), 'public');
         let absolutePath = submission.fileUrl;
 

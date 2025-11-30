@@ -397,13 +397,18 @@ export async function deleteContestAction(contestId: string) {
     return { success: false, error: "Unauthorized" };
 
   try {
-    // Check if contest is currently running
+    // Check if contest is currently running and has teams
     const contest = await db.contest.findUnique({
       where: { id: contestId },
       select: {
         startTime: true,
         endTime: true,
         isActive: true,
+        _count: {
+          select: {
+            registrations: true,
+          },
+        },
       },
     });
 
@@ -412,6 +417,19 @@ export async function deleteContestAction(contestId: string) {
     }
 
     const now = new Date();
+    const hasEnded = now > contest.endTime;
+    const teamCount = contest._count.registrations;
+
+    // ENHANCED LOGIC: Allow deletion if contest has ended (archival cleanup)
+    // Block deletion only if: teams exist AND contest hasn't ended yet
+    if (teamCount > 0 && !hasEnded) {
+      return {
+        success: false,
+        error: "Cannot delete contest with registered teams unless it has ended. Please wait until the contest ends for archival cleanup.",
+      };
+    }
+
+    // Check if currently running (extra safety)
     const isRunning = contest.isActive &&
       now >= contest.startTime &&
       now <= contest.endTime;
@@ -423,7 +441,7 @@ export async function deleteContestAction(contestId: string) {
       };
     }
 
-    // Transactionally delete all related entities (Problems, Submissions, Announcements)
+    // Transactionally delete all related entities
     await db.$transaction(async (tx) => {
       // 1. Delete submissions related to problems in this contest
       const problems = await tx.problem.findMany({
@@ -436,27 +454,50 @@ export async function deleteContestAction(contestId: string) {
         where: { problemId: { in: problemIds } },
       });
 
-      // 2. Delete problems
+      // 2. Delete contest registrations (teams)
+      await tx.contestRegistration.deleteMany({
+        where: { contest_id: contestId },
+      });
+
+      // 3. Delete jury assignments
+      await tx.juryAssignment.deleteMany({
+        where: { contestId: contestId },
+      });
+
+      // 4. Delete team scores for teams in this contest
+      await tx.teamScore.deleteMany({
+        where: {
+          team: {
+            assigned_contest_id: contestId,
+          },
+        },
+      });
+
+      // 5. Delete problems
       await tx.problem.deleteMany({ where: { contestId: contestId } });
 
-      // 3. Delete announcements
+      // 6. Delete announcements
       await tx.announcement.deleteMany({ where: { contest_id: contestId } });
 
-      // 4. Delete the contest itself
+      // 7. Delete system logs related to this contest
+      await tx.systemLog.deleteMany({
+        where: {
+          metadata: {
+            path: ["contestId"],
+            equals: contestId,
+          },
+        },
+      });
+
+      // 8. Delete the contest itself
       await tx.contest.delete({ where: { id: contestId } });
     });
 
     revalidatePath("/admin/contests");
     return { success: true };
   } catch (e: any) {
-    if (e.code === "P2003") {
-      // P2003 is Foreign Key Constraint error. This happens if ContestRegistration exists.
-      return {
-        success: false,
-        error: "Cannot delete. Teams are still registered for this contest.",
-      };
-    }
-    return { success: false, error: "Deletion failed." };
+    console.error("Contest deletion error:", e);
+    return { success: false, error: `Deletion failed: ${e.message}` };
   }
 }
 

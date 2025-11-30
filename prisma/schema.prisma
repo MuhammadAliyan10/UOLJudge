@@ -201,6 +201,12 @@ model Submission {
   isLatest Boolean @default(true) @map("is_latest") // For efficient querying of latest submission
   canRetry Boolean @default(false) @map("can_retry") // Admin override flag
 
+  // RETRY REQUEST FIELDS - The "Second Chance" Protocol
+  retryRequested   Boolean   @default(false) @map("retry_requested") // Team begged for retry
+  retryReason      String?   @map("retry_reason") @db.Text // Team's explanation
+  retryRequestedAt DateTime? @map("retry_requested_at") // When they begged
+  retryGrantedBy   String?   @map("retry_granted_by") // Jury username who granted mercy
+
   autoScore   Int  @default(0) @map("auto_score")
   manualScore Int? @map("manual_score")
   finalScore  Int  @default(0) @map("final_score")

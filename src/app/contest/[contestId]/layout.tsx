@@ -17,9 +17,27 @@ export default async function ContestIdLayout({
     const { contestId } = await params;
 
     // 1. Authenticate
+    // Note: Middleware already enforces auth, so if we're here, user WAS authenticated
+    // During revalidation, session might transiently be null - don't redirect in that case
     const session = await getSession();
     if (!session || session.role !== "PARTICIPANT") {
-        redirect("/login");
+        // This shouldn't happen in normal flow (middleware handles it)
+        // But during revalidation or edge cases, gracefully show error instead of redirect
+        console.warn("Session missing in contest layout - this may indicate a revalidation issue");
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+                <div className="max-w-md w-full bg-white border border-yellow-200 rounded-lg p-8 text-center shadow-lg">
+                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Session Issue</h2>
+                    <p className="text-slate-600 mb-6">
+                        Please refresh the page or{" "}
+                        <a href="/login" className="text-blue-600 hover:underline">
+                            log in again
+                        </a>
+                        .
+                    </p>
+                </div>
+            </div>
+        );
     }
 
     // 2. Fetch Team Profile
@@ -35,7 +53,20 @@ export default async function ContestIdLayout({
     });
 
     if (!teamProfile) {
-        redirect("/login");
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+                <div className="max-w-md w-full bg-white border border-red-200 rounded-lg p-8 text-center shadow-lg">
+                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Team Profile Not Found</h2>
+                    <p className="text-slate-600 mb-6">
+                        Please contact an administrator or{" "}
+                        <a href="/login" className="text-blue-600 hover:underline">
+                            log in again
+                        </a>
+                        .
+                    </p>
+                </div>
+            </div>
+        );
     }
 
     // 3. Verify team is assigned to THIS contest
