@@ -64,7 +64,7 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
     const reconnectAttempts = useRef(0);
 
     // Use environment variable or default to localhost
-    const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
+    const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "wss://invalid-cold-leslie-wish.trycloudflare.com";
 
     const connect = () => {
         // Stop trying after 5 failed attempts if we never connected

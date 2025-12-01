@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useDebouncedRefresh } from "@/hooks/useDebouncedRefresh";
 import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
 
 interface RefresherProps {
@@ -12,31 +12,30 @@ interface RefresherProps {
 
 /**
  * Forces the parent Server Component data to re-fetch (refetch)
- * on a set interval via router.refresh().
+ * on a set interval via debounced refresh.
  * ALSO listens to WebSocket events for instant updates.
  */
 export default function ContestTableRefresher({
   children,
   interval,
 }: RefresherProps) {
-  const router = useRouter();
+  const refresh = useDebouncedRefresh(500);
 
   // 1. Interval Refresh (Backup)
   useEffect(() => {
     const timer = setInterval(() => {
-      // Forces the Next.js cache to be checked/re-run for the current path
-      router.refresh();
+      refresh();
     }, interval);
 
     return () => clearInterval(timer);
-  }, [router, interval]);
+  }, [refresh, interval]);
 
   // 2. Real-time Socket Refresh
   useContestSocket({
     onContestUpdate: (payload) => {
-      router.refresh();
+      refresh();
     },
-    onStatusUpdate: () => router.refresh(),
+    onStatusUpdate: () => refresh(),
   });
 
   return <>{children}</>;

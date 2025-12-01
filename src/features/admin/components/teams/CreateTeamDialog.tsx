@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { createTeamAction } from "@/server/actions/admin/admin";
+import { createTeamAction, getAllContestsForTeamAssignment } from "@/server/actions/admin/admin";
 import {
   Dialog,
   DialogContent,
@@ -48,17 +48,22 @@ type FormValues = z.infer<typeof formSchema>;
 export function CreateTeamDialog() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [contests, setContests] = useState<Array<{ id: string; name: string; startTime: Date }>>([]);
+  // Type simplified to match Server Action response
+  const [contests, setContests] = useState<Array<{ id: string; name: string }>>([]);
+  const [contestsLoading, setContestsLoading] = useState(true);
 
-  // Fetch available contests
+  // Fetch available contests using Server Action (ALL contests, not just active)
   useEffect(() => {
     async function fetchContests() {
+      setContestsLoading(true);
       try {
-        const res = await fetch("/api/contests");
-        const data = await res.json();
+        const data = await getAllContestsForTeamAssignment();
         setContests(data);
       } catch (error) {
         console.error("Failed to fetch contests:", error);
+        setContests([]);
+      } finally {
+        setContestsLoading(false);
       }
     }
     if (open) fetchContests();
@@ -172,17 +177,18 @@ export function CreateTeamDialog() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {contests.length === 0 ? (
+                          {contestsLoading ? (
                             <SelectItem value="_loading" disabled>
                               Loading contests...
+                            </SelectItem>
+                          ) : contests.length === 0 ? (
+                            <SelectItem value="_no_contests" disabled>
+                              ⚠️ No contests available - Create one first
                             </SelectItem>
                           ) : (
                             contests.map((contest) => (
                               <SelectItem key={contest.id} value={contest.id}>
                                 <span className="font-medium text-slate-900">{contest.name}</span>
-                                <span className="ml-2 text-slate-400 text-xs">
-                                  ({new Date(contest.startTime).toLocaleDateString()})
-                                </span>
                               </SelectItem>
                             ))
                           )}

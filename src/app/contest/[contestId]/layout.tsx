@@ -158,13 +158,14 @@ export default async function ContestIdLayout({
     return (
         <ContestLayoutClient
             teamName={teamProfile.display_name}
+            teamId={session.userId}
             teamScore={teamProfile.total_score}
             teamCategory={teamProfile.category}
             contestId={contest.id}
             contestStartTime={contest.startTime}
             contestEndTime={contest.endTime}
             isPaused={contest.isPaused}
-            isFrozen={contest.isFrozen} // Pass isFrozen
+            isFrozen={contest.isFrozen}
         >
             {children}
         </ContestLayoutClient>

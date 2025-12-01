@@ -64,15 +64,21 @@ export async function decrypt(token: string): Promise<SessionPayload | null> {
 
 /**
  * Creates a new session cookie
+ * CRITICAL FIX: Supports HTTP deployments (LAN) via FORCE_INSECURE_COOKIES
  */
 export async function createSession(payload: SessionPayload): Promise<void> {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     const token = await encrypt(payload);
 
+    // BUG FIX: Allow insecure cookies for HTTP LAN deployments
+    // In production over HTTP (no SSL), browsers reject Secure cookies
+    const isSecure = process.env.NODE_ENV === 'production' &&
+        process.env.FORCE_INSECURE_COOKIES !== 'true';
+
     const cookieStore = await cookies();
     cookieStore.set('session', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isSecure,
         sameSite: 'lax',
         expires: expiresAt,
         path: '/',
@@ -122,12 +128,16 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const refreshedToken = await encrypt(parsed);
 
+    // BUG FIX: Match cookie security settings with createSession()
+    const isSecure = process.env.NODE_ENV === 'production' &&
+        process.env.FORCE_INSECURE_COOKIES !== 'true';
+
     const response = NextResponse.next();
     response.cookies.set({
         name: 'session',
         value: refreshedToken,
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isSecure,
         sameSite: 'lax',
         expires: expiresAt,
         path: '/',

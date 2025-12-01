@@ -89,7 +89,7 @@ export function ContestActions({ contest }: { contest: any }) {
         <DropdownMenuContent align="end" className="bg-white w-48">
 
 
-          <Link href={`/leaderboard/${contest.id}`}>
+          <Link href={`/leaderboard/${contest.id}`} target="_blank" rel="noopener noreferrer">
             <DropdownMenuItem>
               <Trophy className="mr-2 h-4 w-4" /> View Leaderboard
             </DropdownMenuItem>

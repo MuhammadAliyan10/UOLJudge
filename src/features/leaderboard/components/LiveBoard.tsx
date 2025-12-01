@@ -5,6 +5,7 @@ import { Card } from "@/features/shared/ui/card";
 import { Badge } from "@/features/shared/ui/badge";
 import { Trophy, Medal, Award } from "lucide-react";
 import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
+import { useDebouncedRefresh } from "@/hooks/useDebouncedRefresh";
 import type { Category } from "@prisma/client";
 
 interface TeamScoreData {
@@ -34,6 +35,9 @@ export function LiveBoard({ initialScores, contestId, isFrozen = false }: LiveBo
     const [scores, setScores] = useState<TeamScoreData[]>(initialScores);
     const [frozenState, setFrozenState] = useState(isFrozen);
 
+    // Debounced refresh to prevent server thrashing
+    const refresh = useDebouncedRefresh(500);
+
     // Sort scores by 3-Tier ICPC rules: Solved → Score → Penalty
     const sortScores = (scores: TeamScoreData[]) => {
         return [...scores].sort((a, b) => {
@@ -57,6 +61,7 @@ export function LiveBoard({ initialScores, contestId, isFrozen = false }: LiveBo
             if ("isFrozen" in payload) {
                 if (payload.contestId === contestId) {
                     setFrozenState(payload.isFrozen);
+                    refresh(); // Refresh to show updated freeze status
                 }
                 return;
             }
@@ -67,7 +72,7 @@ export function LiveBoard({ initialScores, contestId, isFrozen = false }: LiveBo
                 return;
             }
 
-            // Update specific team score
+            // Update specific team score (optimistic update)
             setScores((prevScores) => {
                 const updated = prevScores.map((score) =>
                     score.teamId === payload.teamId
@@ -81,9 +86,13 @@ export function LiveBoard({ initialScores, contestId, isFrozen = false }: LiveBo
                 );
                 return sortScores(updated);
             });
+
+            // Trigger server refresh to get authoritative data
+            refresh();
         },
         onStatusUpdate: (payload) => {
-            // Only handle non-freeze status updates here
+            // Handle contest status changes (pause/unpause)
+            refresh();
         },
     });
 

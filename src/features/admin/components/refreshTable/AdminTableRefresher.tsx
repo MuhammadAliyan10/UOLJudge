@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useDebouncedRefresh } from "@/hooks/useDebouncedRefresh";
 
 interface RefresherProps {
   children: React.ReactNode;
@@ -12,21 +12,22 @@ interface RefresherProps {
 /**
  * Forces the parent Server Component route to refresh its data (refetch)
  * on a set interval. This ensures administrative tables stay current.
+ * Uses debounced refresh to prevent server thrashing.
  */
 export default function AdminTableRefresher({
   children,
   interval,
 }: RefresherProps) {
-  const router = useRouter();
+  const refresh = useDebouncedRefresh(500);
 
   useEffect(() => {
-    // We use router.refresh() because it forces data fetching logic on the server
+    // Use debounced refresh to prevent server thrashing
     const timer = setInterval(() => {
-      router.refresh();
+      refresh();
     }, interval);
 
     return () => clearInterval(timer);
-  }, [router, interval]);
+  }, [refresh, interval]);
 
   return <>{children}</>;
 }

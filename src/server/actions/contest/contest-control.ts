@@ -4,7 +4,11 @@ import { db as prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
-const WS_API_URL = "http://localhost:3001/broadcast";
+// BUG FIX: Use Docker service name for internal WebSocket communication
+// Inside Docker: localhost = container itself, NOT the ws-server container
+// Use INTERNAL_WS_URL (http://ws-server:3001) for Docker deployments
+const WS_BASE_URL = process.env.INTERNAL_WS_URL || process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001";
+const WS_API_URL = `${WS_BASE_URL.replace('ws://', 'http://').replace('wss://', 'https://')}/broadcast`;
 
 async function broadcastToWsServer(type: string, payload: any) {
     try {

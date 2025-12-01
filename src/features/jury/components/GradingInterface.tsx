@@ -25,11 +25,11 @@ import {
     GripVertical,
     History,
     MessageSquare,
-    Copy,
     Hand,
     ArrowLeft,
     AlertTriangle,
-    Layers,
+    Package,
+    Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { gradeSubmissionAction } from "@/server/actions/jury/jury-grading";
@@ -38,6 +38,11 @@ import { grantRetry } from "@/server/actions/submission/retry-system";
 import { cn } from "@/lib/utils";
 import { calculateSuggestedPenalty, getDifficultyColor, validateManualScore } from "@/lib/utils/scoring";
 import { useSubmissionPresence } from "@/features/jury/hooks/useSubmissionPresence";
+import { getFileTypeInfo } from "@/lib/utils/file-type";
+import { CodePreview } from "@/features/jury/components/CodePreview";
+import { BinaryFileCard } from "@/features/jury/components/BinaryFileCard";
+import { useDebouncedRefresh } from "@/hooks/useDebouncedRefresh";
+import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
 
 interface GradingInterfaceProps {
     submission: any;
@@ -61,8 +66,32 @@ export function GradingInterface({ submission, history, currentJuryUsername }: G
     const [isBinary, setIsBinary] = useState(false);
     const [loadingFile, setLoadingFile] = useState(true);
 
+    // Debounced refresh for auto-updates
+    const refresh = useDebouncedRefresh(500);
+
     // 🎯 Presence System (Headless - sends events but no UI)
     useSubmissionPresence(submission.id, currentJuryUsername);
+
+    // 🔄 WebSocket Listener for conflict prevention
+    useContestSocket({
+        onSubmissionUpdate: (payload) => {
+            // If this submission was graded by someone else, refresh to show updated status
+            if (payload.submissionId === submission.id) {
+                toast.info("This submission was just graded", {
+                    description: "Refreshing to show latest status...",
+                    duration: 3000,
+                });
+                refresh();
+            }
+        },
+        onJuryQueueUpdate: (payload) => {
+            // Refresh on any queue update to keep status in sync
+            refresh();
+        },
+    });
+
+    // File type detection
+    const fileTypeInfo = useMemo(() => getFileTypeInfo(submission.fileType), [submission.fileType]);
 
     // Calculate penalty suggestion
     const penaltySuggestion = useMemo(() => {
@@ -166,26 +195,6 @@ export function GradingInterface({ submission, history, currentJuryUsername }: G
         }
     };
 
-    const getLanguageFromFileType = (fileType: string) => {
-        const map: Record<string, string> = {
-            cpp: "cpp",
-            java: "java",
-            py: "python",
-            js: "javascript",
-            ts: "typescript",
-            c: "c",
-            cs: "csharp",
-        };
-        return map[fileType] || "plaintext";
-    };
-
-    const handleCopyCode = () => {
-        if (fileContent) {
-            navigator.clipboard.writeText(fileContent);
-            toast.success("Code copied to clipboard!");
-        }
-    };
-
     const handleGrantRetry = async () => {
         if (!confirm("Grant retry request for this team? They will be able to submit again.")) {
             return;
@@ -237,35 +246,24 @@ export function GradingInterface({ submission, history, currentJuryUsername }: G
                 </div>
 
                 <PanelGroup direction="horizontal" className="h-[calc(100%-3rem)] gap-6">
-                    {/* LEFT PANEL - Code Viewer (60%) */}
+                    {/* LEFT PANEL - File Viewer (60%) */}
                     <Panel defaultSize={60} minSize={40}>
                         <Card className="h-full border-slate-200 shadow-sm flex flex-col">
                             <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4">
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                            <FileCode size={18} className="text-purple-600" />
-                                            Code Inspector
+                                            {fileTypeInfo.icon === "code" && <FileCode size={18} className="text-purple-600" />}
+                                            {fileTypeInfo.icon === "archive" && <Package size={18} className="text-purple-600" />}
+                                            {fileTypeInfo.icon === "mobile" && <Smartphone size={18} className="text-purple-600" />}
+                                            {fileTypeInfo.category === "code" ? "Code Inspector" : "File Inspector"}
                                         </CardTitle>
-                                        <div className="flex items-center gap-2">
-                                            {!isBinary && fileContent && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={handleCopyCode}
-                                                    className="h-7 px-2 text-xs"
-                                                >
-                                                    <Copy size={12} className="mr-1" />
-                                                    Copy
-                                                </Button>
-                                            )}
-                                            <Badge
-                                                variant="outline"
-                                                className="font-mono text-xs bg-slate-100 text-slate-700 border-slate-300"
-                                            >
-                                                {submission.fileType.toUpperCase()}
-                                            </Badge>
-                                        </div>
+                                        <Badge
+                                            variant="outline"
+                                            className="font-mono text-xs bg-slate-100 text-slate-700 border-slate-300"
+                                        >
+                                            {submission.fileType.toUpperCase()}
+                                        </Badge>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4 text-xs">
                                         <div className="flex items-center gap-2 text-slate-600">
@@ -280,37 +278,28 @@ export function GradingInterface({ submission, history, currentJuryUsername }: G
                                 </div>
                             </CardHeader>
 
-                            <CardContent className="flex-1 p-0 overflow-hidden">
+                            <CardContent className="flex-1 p-0 overflow-hidden relative">
                                 {loadingFile ? (
                                     <div className="flex items-center justify-center h-full text-slate-400">
                                         Loading file...
                                     </div>
-                                ) : isBinary ? (
-                                    <div className="flex flex-col items-center justify-center h-full p-8 space-y-4">
-                                        <div className="p-4 bg-slate-100 rounded-full">
-                                            <Download size={32} className="text-slate-400" />
-                                        </div>
-                                        <p className="text-sm font-medium text-slate-600">
-                                            Binary file ({submission.fileType.toUpperCase()})
-                                        </p>
-                                        <p className="text-xs text-slate-400 text-center max-w-md">
-                                            This file cannot be previewed. Download it to review the submission.
-                                        </p>
-                                        <a href={`/api/download/${submission.id}`} download>
-                                            <Button className="bg-purple-600 hover:bg-purple-700 text-white">
-                                                <Download size={14} className="mr-2" />
-                                                Download File
-                                            </Button>
-                                        </a>
-                                    </div>
+                                ) : fileTypeInfo.category === "binary" || isBinary ? (
+                                    <BinaryFileCard
+                                        fileName={`submission.${submission.fileType}`}
+                                        fileType={submission.fileType}
+                                        downloadUrl={`/api/download/${submission.id}`}
+                                        iconType={fileTypeInfo.icon}
+                                    />
+                                ) : fileContent ? (
+                                    <CodePreview
+                                        content={fileContent}
+                                        language={fileTypeInfo.language}
+                                        fileName={`submission.${submission.fileType}`}
+                                    />
                                 ) : (
-                                    <ScrollArea className="h-full overflow-y-auto">
-                                        <pre className="p-6 text-sm font-mono bg-slate-900 text-slate-100 overflow-x-auto">
-                                            <code className={`language-${getLanguageFromFileType(submission.fileType)}`}>
-                                                {fileContent || "// No content available"}
-                                            </code>
-                                        </pre>
-                                    </ScrollArea>
+                                    <div className="flex items-center justify-center h-full text-slate-400">
+                                        No content available
+                                    </div>
                                 )}
                             </CardContent>
                         </Card>

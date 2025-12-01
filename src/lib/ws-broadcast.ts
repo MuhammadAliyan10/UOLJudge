@@ -4,7 +4,8 @@
  */
 export async function broadcastContestUpdate(eventType: string, payload: any): Promise<void> {
     try {
-        await fetch('http://localhost:3001/broadcast', {
+        const wsUrl = process.env.INTERNAL_WS_URL || "http://localhost:3001";
+        await fetch(`${wsUrl}/broadcast`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

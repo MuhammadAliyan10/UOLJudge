@@ -34,8 +34,12 @@ export async function toggleTeamBlock(teamId: string) {
         });
 
         // Broadcast real-time update to Pulse Engine
+        // BUG FIX: Use Docker-aware URL (ws-server service name, not localhost)
+        const wsBaseUrl = process.env.INTERNAL_WS_URL || process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001";
+        const broadcastUrl = `${wsBaseUrl.replace('ws://', 'http://').replace('wss://', 'https://')}/broadcast`;
+
         try {
-            await fetch("http://localhost:3001/broadcast", {
+            await fetch(broadcastUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

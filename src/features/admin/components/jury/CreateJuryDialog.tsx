@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -40,6 +41,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export function CreateJuryDialog() {
+    const router = useRouter();
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [contests, setContests] = useState<Array<{ id: string; name: string }>>([]);
@@ -79,7 +81,7 @@ export function CreateJuryDialog() {
             toast.success(res.message || "Jury member created successfully");
             form.reset();
             setOpen(false);
-            window.location.reload(); // Refresh to show new jury member
+            router.refresh(); // Soft refresh instead of hard reload
         } else {
             toast.error(res.error || "Failed to create jury member");
         }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Clock, Trophy, Cpu, Globe, Smartphone, Shield, FileCode, History, ListTodo, LogOut } from "lucide-react";
@@ -9,10 +10,13 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/features/shared/ui/button";
 import { logoutAction } from "@/server/actions/auth/auth";
 import { toast } from "sonner";
+import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
 
 export interface ContestHeaderProps {
     teamName: string;
+    teamId: string;
     teamScore: number;
+    teamRank?: number;
     teamCategory: Category;
     contestEndTime?: Date;
     contestStartTime?: Date;
@@ -22,7 +26,9 @@ export interface ContestHeaderProps {
 
 export default function ContestHeader({
     teamName,
+    teamId,
     teamScore,
+    teamRank,
     teamCategory,
     contestEndTime,
     contestStartTime,
@@ -30,6 +36,21 @@ export default function ContestHeader({
     contestId,
 }: ContestHeaderProps) {
     const pathname = usePathname();
+
+    // Real-time score and rank updates
+    const [liveScore, setLiveScore] = useState(teamScore);
+    const [liveRank, setLiveRank] = useState(teamRank);
+
+    // WebSocket for live updates
+    useContestSocket({
+        onLeaderboardUpdate: (payload) => {
+            // Update score if this is our team
+            if (payload.teamId === teamId) {
+                setLiveScore(payload.totalScore || payload.solvedCount * 100);
+                // Rank would need to be calculated server-side, or we can omit for now
+            }
+        },
+    });
 
     const CategoryIcon =
         teamCategory === "WEB"
@@ -126,14 +147,14 @@ export default function ContestHeader({
 
             {/* Right Section: Stats & Profile */}
             <div className="flex items-center gap-4 md:gap-6">
-                {/* Score Badge */}
+                {/* Score Badge (Real-time) */}
                 <div className="hidden sm:flex flex-col items-end md:items-center">
                     <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                        Score
+                        {liveRank ? `Rank #${liveRank}` : "Score"}
                     </span>
                     <div className="flex items-center gap-1.5 font-bold text-slate-600">
                         <Trophy size={14} className="text-amber-500" />
-                        <span className="text-sm leading-none">{teamScore}</span>
+                        <span className="text-sm leading-none tabular-nums">{liveScore}</span>
                     </div>
                 </div>
 

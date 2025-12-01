@@ -1,26 +1,26 @@
 "use client";
 
 import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
-import { useRouter } from "next/navigation";
+import { useDebouncedRefresh } from "@/hooks/useDebouncedRefresh";
 
 /**
  * WebSocket Listener for Contest Submissions Page
- * Listens for submission status updates and triggers page refresh
+ * Listens for submission status updates and triggers debounced page refresh
  */
 export function SubmissionsWebSocketListener() {
-    const router = useRouter();
+    const refresh = useDebouncedRefresh(500);
 
     useContestSocket({
         // Listen for submission grading updates
         onSubmissionUpdate: () => {
-            router.refresh();
+            refresh();
         },
         // Listen for retry status changes
         onRetryRequested: () => {
-            router.refresh();
+            refresh();
         },
         onRetryGranted: () => {
-            router.refresh();
+            refresh();
         },
     });
 

@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/features/shared/ui/t
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
+import { useDebouncedRefresh } from "@/hooks/useDebouncedRefresh";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
@@ -74,29 +75,39 @@ export function SubmissionsClient({
     const [filter, setFilter] = useState<"all" | "retry">("all");
     const [presenceMap, setPresenceMap] = useState<Map<string, string[]>>(new Map());
 
+    // Debounced refresh to prevent server thrashing
+    const refresh = useDebouncedRefresh(500);
+
     const { isConnected } = useContestSocket({
         onNewSubmission: (payload) => {
             toast.success(`New submission from ${payload.teamName}!`, {
                 description: "Pending queue updated",
                 duration: 5000,
             });
+            // Auto-refresh to show new submission
+            refresh();
         },
         onJuryQueueUpdate: (payload) => {
-            // UI will auto-update via revalidatePath
+            // Refresh when another jury grades something
+            refresh();
         },
         onRetryRequested: (payload) => {
             toast.info(`${payload.teamName} requested retry`, {
                 description: payload.problemTitle,
                 duration: 6000,
             });
+            // Auto-refresh to show retry request
+            refresh();
         },
         onRetryGranted: (payload) => {
             toast.success("Retry granted!", {
                 description: "Team can now submit again",
                 duration: 5000,
             });
+            // Auto-refresh to update retry status
+            refresh();
         },
-        // 🎯 Presence tracking
+        // 🎯 Presence tracking (no refresh needed - local state only)
         onPresenceUpdate: (payload) => {
             console.log('🎯 PRESENCE_UPDATE received:', payload);
             setPresenceMap((prev) => {

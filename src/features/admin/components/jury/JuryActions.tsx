@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { MoreVertical, Pencil, Trash2, AlertTriangle } from "lucide-react";
 import {
     DropdownMenu,
@@ -39,13 +40,15 @@ export function JuryActions({ jury }: JuryActionsProps) {
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
+    const router = useRouter();
+
     const handleDelete = async () => {
         setDeleting(true);
         const res = await deleteJuryMemberAction(jury.id);
 
         if (res.success) {
             toast.success(res.message || "Jury member deleted");
-            window.location.reload();
+            router.refresh();
         } else {
             toast.error(res.error || "Failed to delete");
         }
