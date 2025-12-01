@@ -87,11 +87,7 @@ export function ContestActions({ contest }: { contest: any }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-white w-48">
-          <Link href={`/contest/${contest.id}/problems`}>
-            <DropdownMenuItem>
-              <Eye className="mr-2 h-4 w-4" /> View Contest
-            </DropdownMenuItem>
-          </Link>
+
 
           <Link href={`/leaderboard/${contest.id}`}>
             <DropdownMenuItem>

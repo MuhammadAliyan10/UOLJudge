@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileCode, Clock, CheckCircle, Hand, Filter } from "lucide-react";
+import { FileCode, Clock, CheckCircle, Hand, Filter, Eye } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -19,6 +19,12 @@ import { cn } from "@/lib/utils";
 import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/features/shared/ui/tooltip";
 
 interface PendingSubmission {
     id: string;
@@ -66,6 +72,7 @@ export function SubmissionsClient({
 }: SubmissionsClientProps) {
     const router = useRouter();
     const [filter, setFilter] = useState<"all" | "retry">("all");
+    const [presenceMap, setPresenceMap] = useState<Map<string, string[]>>(new Map());
 
     const { isConnected } = useContestSocket({
         onNewSubmission: (payload) => {
@@ -89,7 +96,23 @@ export function SubmissionsClient({
                 duration: 5000,
             });
         },
+        // 🎯 Presence tracking
+        onPresenceUpdate: (payload) => {
+            console.log('🎯 PRESENCE_UPDATE received:', payload);
+            setPresenceMap((prev) => {
+                const newMap = new Map(prev);
+                if (payload.activeUsers.length > 0) {
+                    newMap.set(payload.submissionId, payload.activeUsers);
+                } else {
+                    newMap.delete(payload.submissionId);
+                }
+                console.log('🎯 Updated presenceMap:', Object.fromEntries(newMap));
+                return newMap;
+            });
+        },
     });
+
+    console.log('📋 SubmissionsClient presenceMap:', Object.fromEntries(presenceMap));
 
     // Filter submissions based on retry requests
     const retryRequestIds = new Set(initialRetryRequests.map((r) => r.id));
@@ -241,19 +264,46 @@ export function SubmissionsClient({
                                                     </TableCell>
                                                 )}
                                                 <TableCell className="text-right py-4">
-                                                    <Link href={`/jury/grade/${submission.id}`}>
-                                                        <Button
-                                                            size="sm"
-                                                            className={cn(
-                                                                "h-8 px-4 font-medium",
-                                                                isRetryRequest
-                                                                    ? "bg-orange-600 hover:bg-orange-700 text-white"
-                                                                    : "bg-purple-600 hover:bg-purple-700 text-white"
-                                                            )}
-                                                        >
-                                                            {isRetryRequest ? "Review" : "Grade"}
-                                                        </Button>
-                                                    </Link>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        {/* 🎯 Presence Indicator */}
+                                                        {presenceMap.get(submission.id) && presenceMap.get(submission.id)!.length > 0 && (
+                                                            <TooltipProvider delayDuration={0}>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 border border-amber-300 rounded-full animate-pulse cursor-help">
+                                                                            <Eye size={16} className="text-amber-600 animate-blink" />
+                                                                            <span className="text-xs font-bold text-amber-700">
+                                                                                {presenceMap.get(submission.id)!.length}
+                                                                            </span>
+                                                                        </div>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent side="left" className="max-w-xs">
+                                                                        <div className="text-xs space-y-1">
+                                                                            <p className="font-bold text-amber-600">Being graded by:</p>
+                                                                            <ul className="list-disc list-inside space-y-0.5">
+                                                                                {presenceMap.get(submission.id)!.map((name, idx) => (
+                                                                                    <li key={idx} className="font-mono">{name}</li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        </div>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                        )}
+                                                        <Link href={`/jury/grade/${submission.id}`}>
+                                                            <Button
+                                                                size="sm"
+                                                                className={cn(
+                                                                    "h-8 px-4 font-medium",
+                                                                    isRetryRequest
+                                                                        ? "bg-orange-600 hover:bg-orange-700 text-white"
+                                                                        : "bg-purple-600 hover:bg-purple-700 text-white"
+                                                                )}
+                                                            >
+                                                                {isRetryRequest ? "Review" : "Grade"}
+                                                            </Button>
+                                                        </Link>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         );

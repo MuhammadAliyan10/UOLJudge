@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 export type ContestWSEventType =
     | "CONNECTION_ESTABLISHED"
@@ -17,7 +17,10 @@ export type ContestWSEventType =
     | "RETRY_REQUESTED"
     | "RETRY_GRANTED"
     | "ANNOUNCEMENT"
-    | "CLARIFICATION_UPDATE";
+    | "CLARIFICATION_UPDATE"
+    | "ENTER_SUBMISSION"
+    | "LEAVE_SUBMISSION"
+    | "PRESENCE_UPDATE";
 
 export interface ContestStatusPayload {
     contestId: string;
@@ -48,6 +51,7 @@ export interface UseContestSocketOptions {
     onRetryGranted?: (payload: { submissionId: string; contestId: string; grantedBy: string }) => void;
     onAnnouncement?: (payload: { title: string; message: string; type: "INFO" | "WARNING" | "CRITICAL" }) => void;
     onClarificationUpdate?: (payload: { clarificationId: string; question: string; answer: string; isPublic: boolean }) => void;
+    onPresenceUpdate?: (payload: { submissionId: string; activeUsers: string[] }) => void;
     onConnect?: () => void;
     onDisconnect?: () => void;
 }
@@ -125,6 +129,9 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
                         case "CLARIFICATION_UPDATE":
                             options.onClarificationUpdate?.(message.payload);
                             break;
+                        case "PRESENCE_UPDATE":
+                            options.onPresenceUpdate?.(message.payload);
+                            break;
                         default:
                             // Handle generic updates if needed
                             if (message.type === ("CONTEST_STATUS" as any)) {
@@ -195,8 +202,15 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
         };
     }, []);
 
+    const sendMessage = useCallback((type: string, payload: any) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type, payload }));
+        }
+    }, []);
+
     return {
         isConnected,
         lastMessage,
+        sendMessage,
     };
 }

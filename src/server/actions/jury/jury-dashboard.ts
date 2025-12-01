@@ -300,3 +300,16 @@ export async function getSubmissionGradingHistory(submissionId: string) {
         return [];
     }
 }
+
+/**
+ * Get Current Jury Username
+ * 
+ * Returns the username of the currently logged in jury member
+ */
+export async function getCurrentJuryUsername(): Promise<string> {
+    const session = await requireJury();
+    if (!session) {
+        throw new Error("Unauthorized: Jury session not found.");
+    }
+    return session.username;
+}

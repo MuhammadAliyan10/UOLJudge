@@ -9,7 +9,8 @@ export function JuryWebSocketListener() {
 
     useContestSocket({
         onNewSubmission: () => {
-            router.refresh();
+            // Don't refresh - SubmissionsClient handles this with toast
+            // router.refresh() here causes layout re-render and session check issues
         },
         onSubmissionUpdate: () => {
             router.refresh();

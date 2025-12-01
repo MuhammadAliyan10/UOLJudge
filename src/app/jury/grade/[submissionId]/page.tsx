@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { getSubmissionForGrading, getSubmissionGradingHistory } from "@/server/actions/jury/jury-dashboard";
+import { getSubmissionForGrading, getSubmissionGradingHistory, getCurrentJuryUsername } from "@/server/actions/jury/jury-dashboard";
 import { GradingInterface } from "@/features/jury/components/GradingInterface";
 
 export const dynamic = "force-dynamic";
@@ -17,11 +17,13 @@ export default async function GradingPage({ params }: GradingPageProps) {
     try {
         const submission = await getSubmissionForGrading(submissionId);
         const history = await getSubmissionGradingHistory(submissionId);
+        const currentJuryUsername = await getCurrentJuryUsername();
 
         return (
             <GradingInterface
                 submission={submission}
                 history={history}
+                currentJuryUsername={currentJuryUsername}
             />
         );
     } catch (error: any) {

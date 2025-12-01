@@ -37,6 +37,7 @@ import { getSubmissionPreview } from "@/server/actions/jury/grading";
 import { grantRetry } from "@/server/actions/submission/retry-system";
 import { cn } from "@/lib/utils";
 import { calculateSuggestedPenalty, getDifficultyColor, validateManualScore } from "@/lib/utils/scoring";
+import { useSubmissionPresence } from "@/features/jury/hooks/useSubmissionPresence";
 
 interface GradingInterfaceProps {
     submission: any;
@@ -47,9 +48,10 @@ interface GradingInterfaceProps {
         details: string;
         metadata: any;
     }>;
+    currentJuryUsername: string;
 }
 
-export function GradingInterface({ submission, history }: GradingInterfaceProps) {
+export function GradingInterface({ submission, history, currentJuryUsername }: GradingInterfaceProps) {
     const router = useRouter();
     const [grading, setGrading] = useState(false);
     const [grantingRetry, setGrantingRetry] = useState(false);
@@ -58,6 +60,9 @@ export function GradingInterface({ submission, history }: GradingInterfaceProps)
     const [fileContent, setFileContent] = useState<string | null>(null);
     const [isBinary, setIsBinary] = useState(false);
     const [loadingFile, setLoadingFile] = useState(true);
+
+    // 🎯 Presence System (Headless - sends events but no UI)
+    useSubmissionPresence(submission.id, currentJuryUsername);
 
     // Calculate penalty suggestion
     const penaltySuggestion = useMemo(() => {
