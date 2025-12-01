@@ -21,12 +21,16 @@ export default async function ContestLeaderboardPage({ params }: PageProps) {
   // --- CACHED DATA FETCH ---
   const getLeaderboardData = unstable_cache(
     async (cId: string) => {
-      // Fetch Specific Contest
+      // Fetch Contest
       const contest = await prisma.contest.findUnique({
         where: { id: cId },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          endTime: true,
+          frozenAt: true,
           problems: {
-            select: { id: true, orderIndex: true, category: true },
+            select: { id: true, orderIndex: true },
             orderBy: { orderIndex: "asc" },
           },
         },
@@ -34,57 +38,57 @@ export default async function ContestLeaderboardPage({ params }: PageProps) {
 
       if (!contest) return null;
 
-      const contestCategories = Array.from(
-        new Set(contest.problems.map((p) => p.category))
-      );
-
-      const teams = await prisma.teamProfile.findMany({
-        where: {
-          category: { in: contestCategories },
-        },
+      // Fetch TeamScores with 3-tier sorting
+      const teamScores = await prisma.teamScore.findMany({
+        where: { contestId: cId },
         include: {
-          user: {
-            include: {
-              submissions: {
-                where: {
-                  status: "ACCEPTED",
-                  problem: { contestId: cId },
+          team: {
+            select: {
+              id: true,
+              display_name: true,
+              category: true,
+              user: {
+                select: {
+                  username: true,
+                  submissions: {
+                    where: {
+                      status: "ACCEPTED",
+                      problem: { contestId: cId },
+                    },
+                    select: { problemId: true },
+                  },
                 },
-                select: { problemId: true },
               },
             },
           },
         },
+        orderBy: [
+          { solvedCount: "desc" },  // Primary: Most solved
+          { totalScore: "desc" },   // Secondary: Highest score
+          { totalPenalty: "asc" },  // Tertiary: Fastest time
+        ],
       });
 
-      const formattedTeams = teams.map((team) => {
+      const formattedTeams = teamScores.map((ts) => {
         const solvedProblemIds = new Set(
-          team.user.submissions.map((s) => s.problemId)
+          ts.team.user.submissions.map((s) => s.problemId)
         );
 
         const solvedIndexes = contest.problems
           .filter((p) => solvedProblemIds.has(p.id))
           .map((p) => p.orderIndex);
 
-        const contestScore = contest.problems
-          .filter((p) => solvedProblemIds.has(p.id))
-          .reduce((acc, curr) => acc + 100, 0); // Or use real points
-
         return {
-          id: team.id,
-          display_name: team.display_name,
-          username: team.user.username,
-          category: team.category,
-          total_score: contestScore,
-          total_penalty: team.total_penalty,
+          id: ts.team.id,
+          display_name: ts.team.display_name,
+          username: ts.team.user.username,
+          category: ts.team.category,
+          total_score: ts.totalScore,
+          total_penalty: ts.totalPenalty,
+          solved_count: ts.solvedCount,
           solved_indexes: solvedIndexes,
         };
       });
-
-      formattedTeams.sort(
-        (a, b) =>
-          b.total_score - a.total_score || a.total_penalty - b.total_penalty
-      );
 
       return { teams: formattedTeams, contest };
     },

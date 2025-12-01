@@ -1,4 +1,4 @@
-
+# Dependencies
 /node_modules
 /.pnp
 .pnp.*
@@ -8,60 +8,105 @@
 !.yarn/releases
 !.yarn/versions
 
-
-
-Never push these to GitHub. They contain the actual database files.
-
-pg-data/
-postgres-data/
-
-testing
-
-/coverage
-
-next.js
-
+# Next.js
 /.next/
 /out/
+next-env.d.ts
 
-production
-
+# Production builds
 /build
 /dist
 
-misc
+# Prisma
+/prisma/dev.db
+/prisma/dev.sqlite
+/src/generated/prisma
+/generated
 
-.DS_Store
-*.pem
+# PostgreSQL / Database data (CRITICAL - NEVER commit)
+/pg-data/
+/postgres-data/
+/docker-data/
+/data/
 
-debug
+# Uploads & user-generated content (CRITICAL - contains student code/files)
+/uploads/
+/public/uploads/
 
+# Testing & Coverage
+/coverage
+/.nyc_output
+jest-cache/
+
+# Logs & Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 logs/
+*.log
 
-
-
-Security: Never push .env files containing keys/secrets
-
+# Environment variables & secrets (Security critical)
 .env
+.env.*
+!.env.example
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-.env*
 
-vercel
-
+# Vercel
 .vercel
+.vercel/
 
-typescript
-
+# TypeScript
 *.tsbuildinfo
-next-env.d.ts
+tsconfig.tsbuildinfo
 
-prisma
+# OS & Editor files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.#*
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 
-/src/generated/prisma
+# Certificates & private keys
+*.pem
+*.key
+*.crt
+*.pfx
+
+# Misc
+.tmp/
+.temp/
+.cache/
+.tmp
+temp/
+
+# IDEs
+.idea/
+*.iml
+.vscode-test/
+
+# Docker
+.docker/
+Dockerfile*
+.dockerignore
+
+# Optional: if you use Playwright or Cypress
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/cypress/videos/
+/cypress/screenshots/

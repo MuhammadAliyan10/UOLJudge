@@ -63,6 +63,7 @@ class ContestWebSocketServer {
     private clients: Set<ExtendedWebSocket>;
     // Store latest status to send to new connections
     private currentStatus: any = {};
+    private heartbeatInterval: NodeJS.Timeout | null = null;
 
     constructor(httpServer: any) {
         this.wss = new WebSocketServer({ server: httpServer });
@@ -77,7 +78,7 @@ class ContestWebSocketServer {
     private setupServer(): void {
         this.wss.on('connection', (ws: WebSocket) => {
             const extWs = ws as ExtendedWebSocket;
-            console.log('✓ Client connected');
+            // console.log('✓ Client connected'); // Silenced for production
             this.clients.add(extWs);
 
             // Mark client as alive
@@ -124,7 +125,7 @@ class ContestWebSocketServer {
 
     // Ping/Pong Heartbeat to keep connections alive
     private startHeartbeat(): void {
-        setInterval(() => {
+        this.heartbeatInterval = setInterval(() => {
             this.wss.clients.forEach((ws) => {
                 const extWs = ws as ExtendedWebSocket;
                 if (extWs.isAlive === false) {
@@ -168,6 +169,9 @@ class ContestWebSocketServer {
     }
 
     public shutdown(): void {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+        }
         this.wss.close();
     }
 }

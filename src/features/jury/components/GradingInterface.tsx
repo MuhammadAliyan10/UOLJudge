@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Card, CardContent, CardHeader, CardTitle } from "@/features/shared/ui/card";
 import { Button } from "@/features/shared/ui/button";
 import { Textarea } from "@/features/shared/ui/textarea";
+import { Input } from "@/features/shared/ui/input";
+import { Label } from "@/features/shared/ui/label";
 import { Badge } from "@/features/shared/ui/badge";
 import { Separator } from "@/features/shared/ui/separator";
 import { ScrollArea } from "@/features/shared/ui/scroll-area";
+import { Alert, AlertDescription, AlertTitle } from "@/features/shared/ui/alert";
 import {
     FileCode,
     CheckCircle,
@@ -25,14 +28,15 @@ import {
     Copy,
     Hand,
     ArrowLeft,
+    AlertTriangle,
+    Layers,
 } from "lucide-react";
 import { toast } from "sonner";
 import { gradeSubmissionAction } from "@/server/actions/jury/jury-grading";
 import { getSubmissionPreview } from "@/server/actions/jury/grading";
 import { grantRetry } from "@/server/actions/submission/retry-system";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
-import { Alert, AlertDescription } from "@/features/shared/ui/alert";
+import { calculateSuggestedPenalty, getDifficultyColor, validateManualScore } from "@/lib/utils/scoring";
 
 interface GradingInterfaceProps {
     submission: any;
@@ -50,9 +54,33 @@ export function GradingInterface({ submission, history }: GradingInterfaceProps)
     const [grading, setGrading] = useState(false);
     const [grantingRetry, setGrantingRetry] = useState(false);
     const [comment, setComment] = useState("");
+    const [manualScore, setManualScore] = useState<string>("");
     const [fileContent, setFileContent] = useState<string | null>(null);
     const [isBinary, setIsBinary] = useState(false);
     const [loadingFile, setLoadingFile] = useState(true);
+
+    // Calculate penalty suggestion
+    const penaltySuggestion = useMemo(() => {
+        if (!submission.problem.contest || !submission.submittedAt) return null;
+
+        return calculateSuggestedPenalty(
+            new Date(submission.submittedAt),
+            new Date(submission.problem.contest.startTime),
+            {
+                safeZoneMinutes: submission.problem.contest.safeZoneMinutes || 30,
+                penaltyRate: submission.problem.contest.penaltyRate || 0.5,
+                minScorePercent: submission.problem.contest.minScorePercent || 50,
+            },
+            submission.problem.points
+        );
+    }, [submission]);
+
+    // Validate manual score
+    const scoreValidation = useMemo(() => {
+        const score = parseFloat(manualScore);
+        if (isNaN(score) || manualScore === "") return { isValid: true };
+        return validateManualScore(score, submission.problem.points);
+    }, [manualScore, submission.problem.points]);
 
     // Fetch file content on mount with size protection
     useEffect(() => {
@@ -113,7 +141,8 @@ export function GradingInterface({ submission, history }: GradingInterfaceProps)
             const result = await gradeSubmissionAction(
                 submission.id,
                 verdict,
-                comment.trim() || undefined
+                comment.trim() || undefined,
+                manualScore ? parseFloat(manualScore) : undefined // NEW: Pass manual score
             );
 
             if (result.success) {
@@ -321,11 +350,25 @@ export function GradingInterface({ submission, history }: GradingInterfaceProps)
                                     <Separator />
                                     <div className="flex items-start gap-3">
                                         <Award size={14} className="text-slate-400 mt-0.5" />
-                                        <div>
+                                        <div className="flex-1">
                                             <p className="text-xs text-slate-500">Problem</p>
-                                            <p className="font-mono font-bold text-slate-900">
-                                                {submission.problem.title}
-                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-mono font-bold text-slate-900">
+                                                    {submission.problem.title}
+                                                </p>
+                                                {submission.problem.difficulty && (
+                                                    <Badge className={cn(
+                                                        "text-[10px] font-bold px-1.5 py-0 h-5",
+                                                        getDifficultyColor(submission.problem.difficulty).bg,
+                                                        getDifficultyColor(submission.problem.difficulty).text
+                                                    )}>
+                                                        {submission.problem.difficulty === "EASY" && "🟢"}
+                                                        {submission.problem.difficulty === "MEDIUM" && "🟡"}
+                                                        {submission.problem.difficulty === "HARD" && "🔴"}
+                                                        {submission.problem.difficulty}
+                                                    </Badge>
+                                                )}
+                                            </div>
                                             <p className="text-xs text-slate-500 mt-1">
                                                 {submission.problem.contest.name} • {submission.problem.points} points
                                             </p>
@@ -343,6 +386,51 @@ export function GradingInterface({ submission, history }: GradingInterfaceProps)
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-4 space-y-4 flex-1 flex flex-col">
+                                    {/* Penalty Suggestion Card */}
+                                    {penaltySuggestion && penaltySuggestion.isLate && (
+                                        <Alert className="border-amber-300 bg-amber-50">
+                                            <Clock className="h-4 w-4 text-amber-600" />
+                                            <AlertTitle className="text-amber-900 font-bold text-sm">Late Submission (+{penaltySuggestion.overtimeMinutes} mins)</AlertTitle>
+                                            <AlertDescription className="text-amber-800 text-xs space-y-1 mt-1">
+                                                <p><strong>Recommended Deduction:</strong> -{penaltySuggestion.penalty} points</p>
+                                                <p><strong>Policy:</strong> -{submission.problem.contest.penaltyRate} pts/min after {submission.problem.contest.safeZoneMinutes}m safe zone</p>
+                                                <p><strong>Max Possible Score:</strong> {penaltySuggestion.maxPossibleScore}/{submission.problem.points} points</p>
+                                                <p className="text-amber-700 italic text-[10px]">Floor at {submission.problem.contest.minScorePercent}% = {penaltySuggestion.floorScore} points minimum</p>
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+
+                                    {/* Manual Score Input */}
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                                            <Award size={12} /> Manual Score
+                                        </Label>
+                                        <Input
+                                            type="number"
+                                            value={manualScore}
+                                            onChange={(e) => setManualScore(e.target.value)}
+                                            placeholder={`Enter score (0-${submission.problem.points})`}
+                                            className={cn(
+                                                "bg-slate-50 border-slate-200 font-mono",
+                                                !scoreValidation.isValid && "border-red-500 bg-red-50"
+                                            )}
+                                            min="0"
+                                            max={submission.problem.points}
+                                            step="0.5"
+                                        />
+                                        {!scoreValidation.isValid && (
+                                            <p className="text-xs text-red-600 flex items-center gap-1">
+                                                <AlertTriangle size={12} />
+                                                {scoreValidation.error}
+                                            </p>
+                                        )}
+                                        {penaltySuggestion && penaltySuggestion.isLate && manualScore === "" && (
+                                            <p className="text-xs text-amber-700">
+                                                💡 Suggested: {penaltySuggestion.maxPossibleScore} points (with penalty)
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div className="space-y-2 flex-1">
                                         <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
                                             Comment / Reason
@@ -351,7 +439,7 @@ export function GradingInterface({ submission, history }: GradingInterfaceProps)
                                             value={comment}
                                             onChange={(e) => setComment(e.target.value)}
                                             placeholder="Provide feedback or reason for verdict..."
-                                            className="min-h-[120px] bg-slate-50 border-slate-200 text-slate-900 resize-none"
+                                            className="min-h-[100px] bg-slate-50 border-slate-200 text-slate-900 resize-none"
                                         />
                                         <p className="text-xs text-slate-400">
                                             {comment.trim() ? "" : "Required for rejection, optional for acceptance"}

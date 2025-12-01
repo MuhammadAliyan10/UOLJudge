@@ -41,8 +41,9 @@ import {
   LayoutGrid,
   AlertTriangle
 } from "lucide-react";
-import { Category } from "@prisma/client";
+import { Category, Difficulty } from "@prisma/client";
 import { cn } from "@/lib/utils";
+import { getDifficultyColor } from "@/lib/utils/scoring";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,6 +61,7 @@ interface Problem {
   title: string;
   category: Category;
   points: number;
+  difficulty: Difficulty;
   assets_path: string | null;
   order_index: number;
 }
@@ -163,7 +165,7 @@ export function ManageProblemsDialog({
                   />
                 </div>
 
-                <div className=" gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
                       <Trophy size={10} /> Points
@@ -173,8 +175,23 @@ export function ManageProblemsDialog({
                       type="number"
                       defaultValue={100}
                       required
-                      className="h-9  bg-slate-50 border-slate-200 focus:bg-white font-mono text-slate-900"
+                      className="h-9 bg-slate-50 border-slate-200 focus:bg-white font-mono text-slate-900"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                      <Layers size={10} /> Difficulty
+                    </Label>
+                    <Select name="difficulty" defaultValue="MEDIUM">
+                      <SelectTrigger className="h-9 bg-slate-50 border-slate-200 focus:bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="EASY">🟢 Easy</SelectItem>
+                        <SelectItem value="MEDIUM">🟡 Medium</SelectItem>
+                        <SelectItem value="HARD">🔴 Hard</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   {/* Hidden Category - Defaulting to Contest Category */}
                   <input type="hidden" name="category" value={contestCategory} />
@@ -287,6 +304,18 @@ export function ManageProblemsDialog({
                               <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-slate-500 bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded">
                                 <Trophy size={10} className="text-amber-500" /> {p.points}pts
                               </span>
+                              {p.difficulty && (
+                                <span className={cn(
+                                  "inline-flex items-center gap-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded border",
+                                  getDifficultyColor(p.difficulty).bg,
+                                  getDifficultyColor(p.difficulty).text
+                                )}>
+                                  {p.difficulty === "EASY" && "🟢"}
+                                  {p.difficulty === "MEDIUM" && "🟡"}
+                                  {p.difficulty === "HARD" && "🔴"}
+                                  {p.difficulty}
+                                </span>
+                              )}
                               {p.assets_path && (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600">
                                   <FileText size={10} /> PDF Linked

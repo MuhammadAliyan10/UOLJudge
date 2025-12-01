@@ -13,6 +13,7 @@ interface TeamScoreData {
     teamName: string;
     category: Category;
     solvedCount: number;
+    totalScore: number;      // NEW: Total jury-assigned score
     totalPenalty: number;
     rank?: number;
 }
@@ -27,20 +28,24 @@ interface LiveBoardProps {
  * Live Leaderboard Component
  * O(1) reads from TeamScore table
  * Real-time updates via WebSocket
- * Freeze logic: stops processing updates when contest is frozen
+ * 3-Tier Ranking: Solved Count → Total Score → Time Penalty
  */
 export function LiveBoard({ initialScores, contestId, isFrozen = false }: LiveBoardProps) {
     const [scores, setScores] = useState<TeamScoreData[]>(initialScores);
     const [frozenState, setFrozenState] = useState(isFrozen);
 
-    // Sort scores by ICPC rules: Most Solved → Lowest Penalty
+    // Sort scores by 3-Tier ICPC rules: Solved → Score → Penalty
     const sortScores = (scores: TeamScoreData[]) => {
         return [...scores].sort((a, b) => {
-            // First: Most problems solved (descending)
+            // Primary: Most problems solved (descending)
             if (b.solvedCount !== a.solvedCount) {
                 return b.solvedCount - a.solvedCount;
             }
-            // Second: Lowest penalty (ascending)
+            // Secondary: Highest score (descending)
+            if (b.totalScore !== a.totalScore) {
+                return b.totalScore - a.totalScore;
+            }
+            // Tertiary: Lowest penalty (ascending)
             return a.totalPenalty - b.totalPenalty;
         });
     };
@@ -69,6 +74,7 @@ export function LiveBoard({ initialScores, contestId, isFrozen = false }: LiveBo
                         ? {
                             ...score,
                             solvedCount: payload.solvedCount,
+                            totalScore: payload.totalScore || score.totalScore,  // Use new score if provided
                             totalPenalty: payload.totalPenalty,
                         }
                         : score
@@ -137,14 +143,21 @@ export function LiveBoard({ initialScores, contestId, isFrozen = false }: LiveBo
                                 <th className="text-left p-4 font-semibold w-20">Rank</th>
                                 <th className="text-left p-4 font-semibold">Team</th>
                                 <th className="text-center p-4 font-semibold w-32">Category</th>
-                                <th className="text-center p-4 font-semibold w-32">Solved</th>
-                                <th className="text-center p-4 font-semibold w-32">Penalty</th>
+                                <th className="text-center p-4 font-semibold w-28">
+                                    <span className="text-green-600">Solved</span>
+                                </th>
+                                <th className="text-center p-4 font-semibold w-28">
+                                    <span className="text-blue-600">Points</span>
+                                </th>
+                                <th className="text-center p-4 font-semibold w-28">
+                                    <span className="text-orange-600">Time</span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             {rankedScores.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="text-center p-8 text-muted-foreground">
+                                    <td colSpan={6} className="text-center p-8 text-muted-foreground">
                                         No teams yet
                                     </td>
                                 </tr>
@@ -178,17 +191,24 @@ export function LiveBoard({ initialScores, contestId, isFrozen = false }: LiveBo
                                             </div>
                                         </td>
 
-                                        {/* Solved Count */}
+                                        {/* Solved Count - Primary Sort */}
                                         <td className="p-4 text-center">
-                                            <div className="text-lg font-bold text-green-600">
+                                            <div className="text-xl font-extrabold text-green-600">
                                                 {score.solvedCount}
                                             </div>
                                         </td>
 
-                                        {/* Total Penalty */}
+                                        {/* Total Score - Secondary Sort */}
                                         <td className="p-4 text-center">
-                                            <div className="text-sm text-muted-foreground">
-                                                {score.totalPenalty} min
+                                            <div className="text-lg font-bold text-blue-600">
+                                                {score.totalScore}
+                                            </div>
+                                        </td>
+
+                                        {/* Total Penalty - Tertiary Sort */}
+                                        <td className="p-4 text-center">
+                                            <div className="text-sm text-orange-600 font-medium">
+                                                {Math.floor(score.totalPenalty / 60)}h {score.totalPenalty % 60}m
                                             </div>
                                         </td>
                                     </tr>

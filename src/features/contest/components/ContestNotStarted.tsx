@@ -4,6 +4,8 @@ import { Trophy, FileText } from "lucide-react";
 import { Button } from "@/features/shared/ui/button";
 import Link from "next/link";
 import { CountdownTimer } from "./CountdownTimer";
+import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
+import { useRouter } from "next/navigation";
 
 interface ContestNotStartedProps {
     contestName?: string;
@@ -16,6 +18,22 @@ export default function ContestNotStarted({
     startTime,
     contestId,
 }: ContestNotStartedProps) {
+    const router = useRouter();
+
+    useContestSocket({
+        onContestUpdate: (payload) => {
+            // If the contest we are waiting for is updated (e.g. start time changed)
+            if (payload.id === contestId) {
+                router.refresh();
+            }
+        },
+        onStatusUpdate: (payload) => {
+            if (payload.contestId === contestId) {
+                router.refresh();
+            }
+        }
+    });
+
     return (
         <div className="fixed inset-0 bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center px-4 z-50">
             <div className="max-w-4xl w-full text-center space-y-12">
@@ -87,3 +105,4 @@ export default function ContestNotStarted({
         </div>
     );
 }
+

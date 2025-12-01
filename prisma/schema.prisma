@@ -35,6 +35,12 @@ enum ProblemType {
   DIGITAL // PDF prompt, view in browser
 }
 
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
 enum SubmissionStatus {
   PENDING
   ACCEPTED
@@ -111,16 +117,24 @@ model TeamScore {
   teamId String      @unique @map("team_id")
   team   TeamProfile @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
-  // ICPC Scoring: Most Solved → Lowest Penalty
-  solvedCount  Int @default(0) @map("solved_count")
-  totalPenalty Int @default(0) @map("total_penalty") // Time + (20 × Rejections)
+  // Contest relationship for filtered leaderboards
+  contestId String  @map("contest_id")
+  contest   Contest @relation("TeamScores", fields: [contestId], references: [id], onDelete: Cascade)
+
+  // ICPC-Style 3-Tier Scoring: Solved Count → Total Score → Time Penalty
+  solvedCount  Int @default(0) @map("solved_count")   // Primary: Most problems solved
+  totalScore   Int @default(0) @map("total_score")    // Secondary: Highest jury score
+  totalPenalty Int @default(0) @map("total_penalty")  // Tertiary: Fastest time (minutes)
 
   // JSON field to track problem-specific state for O(1) lookups during grading
-  // Structure: { "problemId": { "solved": boolean, "attempts": int, "penalty": int } }
+  // Structure: { "problemId": { "solved": boolean, "attempts": int, "penalty": int, "score": int } }
   problemStats Json @default("{}") @map("problem_stats")
 
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // Compound index for optimized 3-tier sorting
+  @@unique([teamId, contestId])
+  @@index([contestId, solvedCount(sort: Desc), totalScore(sort: Desc), totalPenalty(sort: Asc)])
   @@map("team_score")
 }
 
@@ -155,12 +169,18 @@ model Contest {
   isActive Boolean   @default(true) @map("is_active")
   config   Json      @default("{}")
 
+  // Hybrid Scoring Configuration
+  safeZoneMinutes Int   @default(30) @map("safe_zone_minutes")
+  penaltyRate     Float @default(0.5) @map("penalty_rate")
+  minScorePercent Int   @default(50) @map("min_score_percent")
+
   // Relations
   problems         Problem[]             @relation("ContestProblems")
   announcements    Announcement[]        @relation("ContestAnnouncements")
   registrations    ContestRegistration[] // NEW: Link back to teams
   assigned_teams   TeamProfile[]         @relation("AssignedTeams")
   jury_assignments JuryAssignment[]      @relation("JuryAssignments") // JURY: Jury members assigned to this contest
+  team_scores      TeamScore[]           @relation("TeamScores") // NEW: Real-time leaderboard scores
 
   // NEW: Category for the contest itself (to default new problems)
   category Category @default(CORE)
@@ -170,15 +190,15 @@ model Problem {
   id         String @id @default(uuid())
   orderIndex Int    @default(0) @map("order_index")
 
-  title       String
-  description String      @db.Text
-  category    Category
-  type        ProblemType @default(PHYSICAL)
-  contentUrl  String?     @map("content_url") // Path to PDF if DIGITAL
-  points      Int         @default(100)
-
-  timeLimitSec  Float? @default(2.0) @map("time_limit_sec")
-  memoryLimitMb Int?   @default(256) @map("memory_limit_mb")
+  title         String
+  description   String      @db.Text
+  category      Category
+  type          ProblemType @default(PHYSICAL)
+  contentUrl    String?     @map("content_url") // Path to PDF if DIGITAL
+  points        Int         @default(100)
+  difficulty    Difficulty  @default(MEDIUM)
+  time_limit    Float       @default(2.0) // seconds@map("time_limit_sec")
+  memoryLimitMb Int?        @default(256) @map("memory_limit_mb")
 
   assetsPath String? @map("assets_path")
 

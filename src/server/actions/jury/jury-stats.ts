@@ -11,7 +11,9 @@ import { UserRole } from "@prisma/client";
 async function requireJury() {
     const session = await getSession();
     if (!session || session.role !== UserRole.JURY) {
-        throw new Error("Unauthorized: Jury access required");
+        // During revalidation, session might be transiently null
+        // Return null instead of throwing to allow graceful degradation
+        return null;
     }
     return session;
 }
@@ -22,9 +24,10 @@ async function requireJury() {
  * Returns: Total teams, pending submissions, retry requests, graded today
  */
 export async function getJuryDashboardStats() {
-    try {
-        const session = await requireJury();
+    const session = await requireJury();
+    if (!session) return { totalTeams: 0, pendingSubmissions: 0, retryRequests: 0, gradedToday: 0 };
 
+    try {
         // Get assigned contest IDs
         const assignments = await prisma.juryAssignment.findMany({
             where: { userId: session.userId },
@@ -104,9 +107,10 @@ export async function getJuryDashboardStats() {
  * Returns: Recent system logs for assigned contests
  */
 export async function getRecentLogs(limit = 10) {
-    try {
-        const session = await requireJury();
+    const session = await requireJury();
+    if (!session) return [];
 
+    try {
         // Get assigned contest IDs
         const assignments = await prisma.juryAssignment.findMany({
             where: { userId: session.userId },
@@ -172,10 +176,10 @@ export async function getRecentLogs(limit = 10) {
  * Returns: All graded submissions (ACCEPTED/REJECTED) for assigned contests
  */
 export async function getAllGradedSubmissions() {
-    try {
-        const session = await requireJury();
+    const session = await requireJury();
+    if (!session) return []; // Graceful degradation during revalidation
 
-        // Get assigned contest IDs
+    try {   // Get assigned contest IDs
         const assignments = await prisma.juryAssignment.findMany({
             where: { userId: session.userId },
             select: { contestId: true },

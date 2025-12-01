@@ -1,87 +1,176 @@
-# 🚀 UOLJudge Deployment Runbook
 
-**Objective:** Deploy the UOLJudge system in an offline-first, production-ready Docker environment.
+# 🚀 UOLJudge V4.0 - Deployment & Operations Manual
 
-## 📋 Prerequisites
+**System Role:** High-Performance Competitive Programming Platform  
+**Architecture:** Offline-First, Dockerized, Hybrid Network (LAN/WAN)
 
-1.  **Docker Desktop**: Ensure Docker Desktop is installed and running.
-    *   [Download for Mac/Windows](https://www.docker.com/products/docker-desktop/)
+---
 
-## 🛠️ Deployment Steps
+## 🏗️ Part 1: Prerequisites (Before You Start)
 
-### 1. Launch the System
-Open your terminal in the project root and run:
+### Hardware Requirements
+- Host Machine: MacBook (M1/M2) or Windows Laptop (i7/Ryzen 7)
+- RAM: **Minimum 6GB allocated to Docker** (Critical)
+- Network: Ethernet Adapter (USB-C) **strongly recommended**
+
+### Software Requirements
+1. Docker Desktop: Installed and running
+2. Node.js: Installed (v18+) for running local scripts
+3. Cloudflared: Installed (for the Tunnel strategy)
+
+---
+
+## 🌍 Part 2: Building the System (Choose Your Scenario)
+
+You **must** choose the correct build strategy based on your location.
+
+### Scenario A: Building at Home (No Proxy / Open Internet)
+Use this if you are testing at home or using a Personal Hotspot.
+
+1. Open your Terminal (Mac) or PowerShell (Windows)
+2. Run the clean build command:
 
 ```bash
-docker-compose up -d --build
+# Remove old containers/volumes to start fresh
+docker-compose down -v
+
+# Build without cache
+docker-compose build --no-cache
 ```
 
-*   `up`: Starts the containers.
-*   `-d`: Detached mode (runs in background).
-*   `--build`: Forces a rebuild of the images to ensure latest code.
+### Scenario B: Building at University (Behind Proxy)
+Use this if you are connected to the Lab Ethernet/Wi-Fi (172.26...).
 
-### 2. Verify Status
-Check if all services are running (db, app, ws-server):
+#### Step 1: Configure Docker Desktop
+1. Open Docker Dashboard → Settings → Resources → Proxies
+2. Turn ON **Manual Proxy**
+3. HTTP & HTTPS: `http://172.26.4.52:3128`
+4. Bypass: `localhost,127.0.0.1,10.*,192.168.*`
+5. Click **Apply & Restart**
 
+#### Step 2: Configure Terminal Session
+Run these commands **before** building:
+
+**Mac / Linux**
 ```bash
-docker-compose ps
+export http_proxy=http://172.26.4.52:3128
+export https_proxy=http://172.26.4.52:3128
+export HTTP_PROXY=http://172.26.4.52:3128
+export HTTPS_PROXY=http://172.26.4.52:3128
 ```
 
-You should see 3 services with status `Up`.
+**Windows PowerShell**
+```powershell
+$Env:http_proxy="http://172.26.4.52:3128"
+$Env:https_proxy="http://172.26.4.52:3128"
+```
 
-### 3. Access the Application
-*   **Web App**: [http://localhost:3000](http://localhost:3000)
-*   **Admin Panel**: [http://localhost:3000/admin](http://localhost:3000/admin)
+#### Step 3: Run the Build
+```bash
+docker-compose build --no-cache
+```
 
-### 4. View Logs
-To monitor the application logs in real-time:
+---
+
+## 🚀 Part 3: Launching the System
+
+Once built, the launch process is the same for everyone.
+
+### 1. Start the Containers
+```bash
+docker-compose up -d
+```
+> Wait 15–20 seconds for the Database to initialize.
+
+### 2. Seed the Database (CRITICAL - First Time Only)
+You must create the Admin account manually.
 
 ```bash
+docker-compose exec app ./node_modules/.bin/tsx prisma/seed.ts
+```
+
+**Success Message:** `✅ Created Super Admin: admin`
+
+### 3. Login
+- URL: http://localhost:3000/admin
+- Username: `admin`
+- Password: `uol_admin_2025`
+
+---
+
+## 📡 Part 4: Connecting Students (The Network)
+
+### Option 1: Cloudflare Tunnel (Recommended)
+Best for mixed networks (some on Lab PC, some on Laptops).
+
+1. **Terminal 1** – Start the Pulse Engine:
+   ```bash
+   npx tsx server/ws-server.ts
+   ```
+
+2. **Terminal 2** – Start the Tunnel:
+   ```bash
+   cloudflared tunnel --url http://localhost:3000
+   ```
+
+3. Distribute the generated URL (e.g., `https://contest.aliyan-judge.me`) on the whiteboard.
+
+### Option 2: Local LAN (Ethernet Only)
+Best when Internet is unavailable. Requires Proxy Bypass on Client PCs.
+
+1. Find your IP:
+   - Windows: `ipconfig`
+   - Mac: `ipconfig getifaddr en0`  
+   Example: `10.20.5.14`
+
+2. On each Student PC → Add your IP to **Proxy Exceptions**
+
+3. Distribute URL: `http://10.20.5.14:3000`
+
+---
+
+## 📊 Part 5: Monitoring & Logs
+
+```bash
+# View all logs live
 docker-compose logs -f
-```
 
-To view logs for a specific service (e.g., the app):
-```bash
+# View only the App logs (Next.js)
 docker-compose logs -f app
+
+# View Database logs (Postgres)
+docker-compose logs -f db
 ```
 
-## 🧪 Stress Testing (Chaos Test)
-To verify system stability under load:
+---
 
-1.  Ensure the app is running (`docker-compose up -d`).
-2.  Run the chaos script:
+## 🆘 Part 6: Troubleshooting Cheat Sheet
 
-```bash
-npx tsx scripts/chaos-test.ts
-```
+| Problem                          | Cause                              | Fix                                                                 |
+|----------------------------------|------------------------------------|----------------------------------------------------------------------|
+| "Build Failed" (Fetch Error)     | Proxy Settings missing             | Follow **Scenario B** – ensure proxy vars are exported               |
+| "Database Connection Failed"     | DB still starting                  | Wait 30s → `docker-compose restart app`                              |
+| "WebSocket Disconnected" (Red Dot)| Pulse Engine not running          | Run `npx tsx server/ws-server.ts` in a separate terminal             |
+| "Command failed: spawn tsx ENOENT"| Dockerfile missing tsx            | Use the latest provided Dockerfile                                   |
+| Students see "403 Forbidden"     | Student PC using Proxy             | Add your server IP to Proxy Exceptions on their PC                   |
 
-This will simulate 50 concurrent users hitting the server. Look for "✅ SYSTEM STABLE".
+---
 
-## 🆘 Disaster Recovery & Persistence
+## 💾 Part 7: Backup & Shutdown
 
-### Database Persistence
-All database data is stored in the `./pg-data` folder in your project root. **This folder is your lifeblood.**
-
-### Backup
-To backup the database, simply copy the `pg-data` folder to a secure location (e.g., a USB drive).
-
-```bash
-# Stop containers first to ensure data integrity
-docker-compose down
-
-# Copy folder
-cp -r pg-data /path/to/backup/location/
-```
-
-### Restore
-1.  Stop containers: `docker-compose down`
-2.  Delete existing `pg-data` (if corrupted).
-3.  Copy your backup `pg-data` folder back to the project root.
-4.  Start containers: `docker-compose up -d`
-
-## 🛑 Shutdown
-To stop all services:
-
+### To Stop
 ```bash
 docker-compose down
 ```
+
+### To Backup Data
+Copy the `pg-data` folder to a USB drive (contains **ALL** contest data).
+
+### To Restore Data
+```bash
+1. docker-compose down
+2. Delete current pg-data folder
+3. Paste backup pg-data folder
+4. docker-compose up -d
+```
+

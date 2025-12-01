@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal, Edit, ListChecks, Clock, Trash2, ToggleLeft, ToggleRight, Snowflake } from "lucide-react";
+import { MoreHorizontal, Edit, ListChecks, Clock, Trash2, ToggleLeft, ToggleRight, Snowflake, Eye, Trophy } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,7 @@ import { ExtendContestDialog } from "./ExtendContestDialog";
 import { DeleteContestDialog } from "./DeleteContestDialog";
 import { toast } from "sonner";
 import { updateContestAction, toggleContestFreezeAction } from "@/server/actions/admin/admin";
+import Link from "next/link";
 
 export function ContestActions({ contest }: { contest: any }) {
   const router = useRouter();
@@ -86,6 +87,20 @@ export function ContestActions({ contest }: { contest: any }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-white w-48">
+          <Link href={`/contest/${contest.id}/problems`}>
+            <DropdownMenuItem>
+              <Eye className="mr-2 h-4 w-4" /> View Contest
+            </DropdownMenuItem>
+          </Link>
+
+          <Link href={`/leaderboard/${contest.id}`}>
+            <DropdownMenuItem>
+              <Trophy className="mr-2 h-4 w-4" /> View Leaderboard
+            </DropdownMenuItem>
+          </Link>
+
+          <DropdownMenuSeparator />
+
           <DropdownMenuItem onClick={() => setOpenEdit(true)}>
             <Edit className="mr-2 h-4 w-4" /> Edit Contest
           </DropdownMenuItem>

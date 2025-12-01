@@ -50,7 +50,17 @@ export async function gradeSubmission(
                 include: {
                     problem: {
                         include: {
-                            contest: true,
+                            contest: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    startTime: true,
+                                    endTime: true,
+                                    safeZoneMinutes: true,
+                                    penaltyRate: true,
+                                    minScorePercent: true,
+                                }
+                            },
                         },
                     },
                     user: {
@@ -76,20 +86,26 @@ export async function gradeSubmission(
             // ============================================================
             // STEP 2: Get or Create TeamScore
             // ============================================================
-            let teamScore = await tx.teamScore.findUnique({
-                where: { teamId },
-            });
+            const contestId = submission.problem.contest.id;
 
-            if (!teamScore) {
-                teamScore = await tx.teamScore.create({
-                    data: {
+            // Use upsert to safely get or create TeamScore (prevents race conditions on creation)
+            const teamScore = await tx.teamScore.upsert({
+                where: {
+                    teamId_contestId: {
                         teamId,
-                        solvedCount: 0,
-                        totalPenalty: 0,
-                        problemStats: {},
-                    },
-                });
-            }
+                        contestId
+                    }
+                },
+                create: {
+                    teamId,
+                    contestId,
+                    solvedCount: 0,
+                    totalScore: 0,
+                    totalPenalty: 0,
+                    problemStats: {},
+                },
+                update: {}, // No-op if exists, we update later
+            });
 
             const problemStats = (teamScore.problemStats as unknown as ProblemStatsMap) || {};
             const currentProblemStat = problemStats[problemId] || {
@@ -106,9 +122,33 @@ export async function gradeSubmission(
             const timeInMinutes = Math.floor(elapsedMs / 60000);
 
             // ============================================================
-            // STEP 4: Update Scores Based on Status
+            // STEP 4: Double Grade Check (Race Condition Prevention)
+            // ============================================================
+            if (submission.status !== SubmissionStatus.PENDING) {
+                // If already graded, we must NOT change the score again unless explicitly overriding
+                // But for safety, if it's a race, we abort.
+                // However, the requirement says "Prevent two juries from overwriting each other".
+                // If we are here, we have the lock.
+
+                // If status is already what we want, return success (idempotent)
+                if (submission.status === (status === "ACCEPTED" ? SubmissionStatus.ACCEPTED : SubmissionStatus.REJECTED)) {
+                    return {
+                        teamScore,
+                        submission,
+                        message: "Submission already graded with same status.",
+                    };
+                }
+
+                // If status is different, it means another jury graded it differently just now.
+                // We should probably throw or return an error to warn the user.
+                throw new Error("Submission was already graded by another jury member.");
+            }
+
+            // ============================================================
+            // STEP 5: Update Scores Based on Status
             // ============================================================
             let newSolvedCount = teamScore.solvedCount;
+            let newTotalScore = teamScore.totalScore;
             let newTotalPenalty = teamScore.totalPenalty;
 
             if (status === "ACCEPTED") {
@@ -135,8 +175,12 @@ export async function gradeSubmission(
                 // Calculate penalty: Time + (20 × Previous Rejections)
                 const problemPenalty = timeInMinutes + (currentProblemStat.attempts * 20);
 
+                // Calculate score to add (use manualScore or problem points)
+                const scoreToAdd = manualScore || submission.problem.points;
+
                 // Update stats
                 newSolvedCount += 1;
+                newTotalScore += scoreToAdd;
                 newTotalPenalty += problemPenalty;
 
                 // Update problem stats
@@ -167,9 +211,15 @@ export async function gradeSubmission(
                     },
                 }),
                 tx.teamScore.update({
-                    where: { teamId },
+                    where: {
+                        teamId_contestId: {
+                            teamId,
+                            contestId
+                        }
+                    },
                     data: {
                         solvedCount: newSolvedCount,
+                        totalScore: newTotalScore,
                         totalPenalty: newTotalPenalty,
                         problemStats: problemStats as any,
                     },
@@ -207,6 +257,10 @@ export async function gradeSubmission(
                     ? `Accepted! Solved: ${newSolvedCount}, Penalty: ${newTotalPenalty}`
                     : "Rejected - attempts incremented",
             };
+        }, {
+            isolationLevel: 'Serializable', // CRITICAL: Prevent lost updates (race conditions) on concurrent submissions
+            maxWait: 5000, // Fail fast if locked
+            timeout: 10000,
         });
 
         // ============================================================
@@ -223,6 +277,7 @@ export async function gradeSubmission(
         await broadcastContestUpdate("LEADERBOARD_UPDATE", {
             teamId: result.teamScore.teamId,
             solvedCount: result.teamScore.solvedCount,
+            totalScore: result.teamScore.totalScore,
             totalPenalty: result.teamScore.totalPenalty,
         });
 

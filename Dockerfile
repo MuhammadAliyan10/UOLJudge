@@ -75,7 +75,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # Install Runtime Deps for WebSocket
 # We install 'ws' and 'tsx' explicitly in the runner
 COPY package.json ./
-RUN npm install ws tsx --no-save
+RUN npm install ws --no-save && npm install -g tsx
 
 USER nextjs
 

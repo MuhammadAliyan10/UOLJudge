@@ -44,7 +44,8 @@ interface GradeSubmissionResponse {
 export async function gradeSubmissionAction(
     submissionId: string,
     verdict: "ACCEPTED" | "REJECTED",
-    comment?: string
+    comment?: string,
+    score?: number // NEW: Optional manual score
 ): Promise<GradeSubmissionResponse> {
     try {
         // ============================================================
@@ -100,8 +101,6 @@ export async function gradeSubmissionAction(
         // ============================================================
         // STEP 3: RE-GRADE CAPABILITY
         // ============================================================
-        // Allow re-grading for corrections - audit trail tracks all changes
-        // If already graded, log the previous state in details
         const previousStatus = submission.status;
         const previousGradedBy = submission.judgedById
             ? await prisma.user.findUnique({
@@ -120,8 +119,11 @@ export async function gradeSubmissionAction(
 
             // Get or create TeamScore
             let teamScore = teamId
-                ? await tx.teamScore.findUnique({
-                    where: { teamId },
+                ? await tx.teamScore.findFirst({
+                    where: {
+                        teamId,
+                        contestId: submission.problem.contest.id
+                    },
                 })
                 : null;
 
@@ -129,7 +131,9 @@ export async function gradeSubmissionAction(
                 teamScore = await tx.teamScore.create({
                     data: {
                         teamId,
+                        contestId: submission.problem.contest.id,
                         solvedCount: 0,
+                        totalScore: 0,
                         totalPenalty: 0,
                         problemStats: {},
                     },
@@ -141,6 +145,7 @@ export async function gradeSubmissionAction(
                 solved: false,
                 attempts: 0,
                 penalty: 0,
+                score: 0, // Track score per problem
             };
 
             // Calculate submission time (in minutes)
@@ -149,27 +154,63 @@ export async function gradeSubmissionAction(
             const timeInMinutes = Math.floor(elapsedMs / 60000);
 
             let newSolvedCount = teamScore?.solvedCount || 0;
+            let newTotalScore = teamScore?.totalScore || 0;
             let newTotalPenalty = teamScore?.totalPenalty || 0;
 
+            // Determine score to add
+            // If manual score is provided, use it. Otherwise default to max points for ACCEPTED, 0 for REJECTED.
+            let finalScore = 0;
+            if (score !== undefined) {
+                finalScore = score;
+            } else {
+                finalScore = verdict === "ACCEPTED" ? submission.problem.points : 0;
+            }
+
+            // RE-GRADING LOGIC: Deduct previous score if this problem was already solved/graded
+            if (currentProblemStat.solved && currentProblemStat.score !== undefined) {
+                newTotalScore -= currentProblemStat.score;
+                // If previously solved, we don't decrement solvedCount usually, unless status changes to REJECTED?
+                // ICPC rules: once solved, always solved. But for manual grading, we might revoke.
+                // If changing from ACCEPTED to REJECTED, decrement solved count.
+                if (previousStatus === "ACCEPTED" && verdict === "REJECTED") {
+                    newSolvedCount = Math.max(0, newSolvedCount - 1);
+                }
+            } else if (previousStatus === "ACCEPTED" && verdict === "REJECTED") {
+                // Should not happen if currentProblemStat.solved is false, but safety check
+                newSolvedCount = Math.max(0, newSolvedCount - 1);
+            }
+
+
             if (verdict === "ACCEPTED") {
-                if (!currentProblemStat.solved) {
+                if (!currentProblemStat.solved || previousStatus !== "ACCEPTED") {
                     // NEW SOLVE! Calculate penalty: Time + (20 × Previous Rejections)
                     const problemPenalty = timeInMinutes + currentProblemStat.attempts * 20;
 
                     newSolvedCount += 1;
+                    newTotalScore += finalScore;
                     newTotalPenalty += problemPenalty;
 
                     problemStats[problemId] = {
                         solved: true,
                         attempts: currentProblemStat.attempts + 1,
                         penalty: problemPenalty,
+                        score: finalScore,
+                    };
+                } else {
+                    // Already solved, just updating score (Re-grade with different score)
+                    newTotalScore += finalScore;
+                    problemStats[problemId] = {
+                        ...currentProblemStat,
+                        score: finalScore,
                     };
                 }
             } else {
-                // REJECTED - Just increment attempts
+                // REJECTED
                 problemStats[problemId] = {
                     ...currentProblemStat,
+                    solved: false, // Mark as unsolved if rejected
                     attempts: currentProblemStat.attempts + 1,
+                    score: 0,
                 };
             }
 
@@ -178,7 +219,7 @@ export async function gradeSubmissionAction(
                 where: { id: submissionId },
                 data: {
                     status: verdict === "ACCEPTED" ? SubmissionStatus.ACCEPTED : SubmissionStatus.REJECTED,
-                    manualScore: verdict === "ACCEPTED" ? submission.problem.points : 0,
+                    manualScore: finalScore,
                     judgedById: juryId,
                     juryComment: comment || null,
                 },
@@ -188,9 +229,15 @@ export async function gradeSubmissionAction(
             let updatedTeamScore = null;
             if (teamScore) {
                 updatedTeamScore = await tx.teamScore.update({
-                    where: { teamId: teamScore.teamId },
+                    where: {
+                        teamId_contestId: {
+                            teamId: teamScore.teamId,
+                            contestId: teamScore.contestId
+                        }
+                    },
                     data: {
                         solvedCount: newSolvedCount,
+                        totalScore: newTotalScore,
                         totalPenalty: newTotalPenalty,
                         problemStats: problemStats as any,
                     },
@@ -203,7 +250,7 @@ export async function gradeSubmissionAction(
                 data: {
                     action: "MANUAL_GRADE_UPDATE",
                     level: verdict === "ACCEPTED" ? "INFO" : "WARN",
-                    message: `${isRegrade ? "RE-GRADED" : "Graded"} submission: ${verdict}`,
+                    message: `${isRegrade ? "RE-GRADED" : "Graded"} submission: ${verdict} (Score: ${finalScore})`,
                     details: `Jury ${session.username} changed score from ${previousStatus} to ${verdict}.${isRegrade && previousGradedBy
                         ? ` (Previously graded by ${previousGradedBy.username})`
                         : ""
@@ -213,6 +260,7 @@ export async function gradeSubmissionAction(
                     metadata: {
                         problemId,
                         verdict,
+                        score: finalScore,
                         solvedCount: newSolvedCount,
                         totalPenalty: newTotalPenalty,
                         teamId: teamScore?.teamId,
@@ -239,6 +287,7 @@ export async function gradeSubmissionAction(
             submissionId,
             status: verdict,
             judgedById: juryId,
+            score: score,
         });
 
         // Notify leaderboard (score update)
@@ -246,6 +295,7 @@ export async function gradeSubmissionAction(
             await broadcastContestUpdate("LEADERBOARD_UPDATE", {
                 teamId: result.teamScore.teamId,
                 solvedCount: result.teamScore.solvedCount,
+                totalScore: result.teamScore.totalScore,
                 totalPenalty: result.teamScore.totalPenalty,
             });
         }
@@ -261,7 +311,7 @@ export async function gradeSubmissionAction(
 
         return {
             success: true,
-            message: `Submission graded as ${verdict}`,
+            message: `Submission graded as ${verdict} with ${score ?? (verdict === "ACCEPTED" ? submission.problem.points : 0)} points`,
         };
     } catch (error: any) {
         console.error("Error grading submission:", error);
@@ -271,3 +321,4 @@ export async function gradeSubmissionAction(
         };
     }
 }
+

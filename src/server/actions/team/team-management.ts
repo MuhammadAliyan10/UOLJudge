@@ -221,7 +221,9 @@ export async function bulkImportTeams(
                     await tx.teamScore.create({
                         data: {
                             teamId: teamProfile.id,
+                            contestId: contestId,
                             solvedCount: 0,
+                            totalScore: 0,
                             totalPenalty: 0,
                             problemStats: {},
                         },

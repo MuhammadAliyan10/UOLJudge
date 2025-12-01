@@ -15,7 +15,9 @@ export type ContestWSEventType =
     | "JURY_QUEUE_UPDATE"
     | "SUBMISSION_UPDATE"
     | "RETRY_REQUESTED"
-    | "RETRY_GRANTED";
+    | "RETRY_GRANTED"
+    | "ANNOUNCEMENT"
+    | "CLARIFICATION_UPDATE";
 
 export interface ContestStatusPayload {
     contestId: string;
@@ -44,6 +46,8 @@ export interface UseContestSocketOptions {
     onTeamStatusUpdate?: (payload: { teamId: string; isBlocked: boolean }) => void;
     onRetryRequested?: (payload: { submissionId: string; teamName: string; reason: string; problemTitle: string; contestId: string }) => void;
     onRetryGranted?: (payload: { submissionId: string; contestId: string; grantedBy: string }) => void;
+    onAnnouncement?: (payload: { title: string; message: string; type: "INFO" | "WARNING" | "CRITICAL" }) => void;
+    onClarificationUpdate?: (payload: { clarificationId: string; question: string; answer: string; isPublic: boolean }) => void;
     onConnect?: () => void;
     onDisconnect?: () => void;
 }
@@ -115,6 +119,12 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
                         case "RETRY_GRANTED":
                             options.onRetryGranted?.(message.payload);
                             break;
+                        case "ANNOUNCEMENT":
+                            options.onAnnouncement?.(message.payload);
+                            break;
+                        case "CLARIFICATION_UPDATE":
+                            options.onClarificationUpdate?.(message.payload);
+                            break;
                         default:
                             // Handle generic updates if needed
                             if (message.type === ("CONTEST_STATUS" as any)) {
@@ -135,8 +145,10 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
                 setIsConnected(false);
                 options.onDisconnect?.();
 
-                // Exponential backoff up to 30 seconds
-                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+                // Exponential backoff up to 30 seconds with Jitter
+                const baseDelay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+                const jitter = Math.random() * 1000; // 0-1000ms random jitter
+                const delay = baseDelay + jitter;
                 reconnectAttempts.current++;
 
                 // Only log reconnection attempts if we previously connected

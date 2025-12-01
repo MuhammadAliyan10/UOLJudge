@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
+import NextTopLoader from "nextjs-toploader";
 
 // 1. Font Configuration
 // Using system fonts to avoid network dependency during Docker build
@@ -32,6 +33,15 @@ export default function RootLayout({
         className="min-h-screen bg-white font-sans antialiased"
         suppressHydrationWarning
       >
+        <NextTopLoader
+          color="#4F39F6"
+          height={3}
+          showSpinner={false}
+          crawlSpeed={200}
+          speed={200}
+          easing="ease"
+          shadow="0 0 10px #4F39F6,0 0 5px #4F39F6"
+        />
         <Toaster position="top-right" />
         {children}
         <Toaster

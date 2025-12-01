@@ -230,6 +230,10 @@ export async function getSubmissionForGrading(submissionId: string) {
                             select: {
                                 id: true,
                                 name: true,
+                                startTime: true,
+                                safeZoneMinutes: true,
+                                penaltyRate: true,
+                                minScorePercent: true,
                             },
                         },
                     },

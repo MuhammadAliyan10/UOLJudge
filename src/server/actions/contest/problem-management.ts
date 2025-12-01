@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import fs from "fs/promises";
 import path from "path";
-import { Category } from "@prisma/client";
+import { Category, Difficulty } from "@prisma/client";
 import { broadcastToWebSocket } from "@/lib/ws-broadcast-client";
 
 // --- SCHEMA ---
@@ -15,6 +15,7 @@ const CreateProblemSchema = z.object({
   title: z.string().min(1, "Title is required"),
   points: z.coerce.number().min(1).default(100),
   category: z.nativeEnum(Category),
+  difficulty: z.nativeEnum(Difficulty).default("MEDIUM"),
   mode: z.enum(["PAPER", "PDF"]),
   // File is validated manually
 });
@@ -29,6 +30,7 @@ export async function createProblemAction(formData: FormData) {
     title: formData.get("title"),
     points: formData.get("points"),
     category: formData.get("category"),
+    difficulty: formData.get("difficulty"),
     mode: formData.get("mode"),
   };
 
@@ -84,6 +86,7 @@ export async function createProblemAction(formData: FormData) {
         description: description,
         points: data.points,
         category: data.category,
+        difficulty: data.difficulty,
         contestId: data.contestId,
         orderIndex: nextIndex,
         type: data.mode === "PDF" ? "DIGITAL" : "PHYSICAL",

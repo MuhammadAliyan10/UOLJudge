@@ -99,9 +99,9 @@ export default async function AdminDashboard() {
               icon={Trophy}
             />
             <ActionCard
-              href="/admin/grading"
-              title="Jury Grading"
-              desc="Grade pending code submissions"
+              href="/users/jury"
+              title="Manage Jury"
+              desc="Manage jury members and their roles"
               icon={FileText}
               highlight={pendingSubmissions > 0} // Highlights if work is needed
             />
