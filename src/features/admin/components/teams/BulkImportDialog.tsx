@@ -160,7 +160,7 @@ export function BulkImportDialog({ contests }: BulkImportDialogProps) {
                     {/* Info Box */}
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
                         <div className="flex gap-2">
-                            <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                             <div className="space-y-1">
                                 <p className="text-blue-900 font-medium">Important Notes:</p>
                                 <ul className="text-blue-700 space-y-0.5 list-disc list-inside">

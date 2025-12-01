@@ -152,7 +152,7 @@ export default function Header({
           <CommandList>
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup heading="Navigation">
-              <CommandItem onSelect={() => runCommand(() => router.push("/admin/dashboard"))}>
+              <CommandItem onSelect={() => runCommand(() => router.push("/admin"))}>
                 <Laptop className="mr-2 h-4 w-4" />
                 <span>Dashboard</span>
               </CommandItem>

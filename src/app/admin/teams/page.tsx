@@ -24,14 +24,37 @@ import { EmptyState } from "@/features/shared/components/EmptyState";
 export const dynamic = "force-dynamic";
 
 // --- CACHED DATA FETCH ---
+
+
+// const getTeamData = unstable_cache(
+//   async () => {
+//     return prisma.teamProfile.findMany({
+//       include: {
+//         user: { select: { id: true, username: true, is_active: true } },
+//         assigned_contest: { select: { id: true, name: true } },
+//       },
+//       orderBy: [{ total_score: "desc" }, { total_penalty: "asc" }],
+//     });
+//   },
+//   ["admin_teams"],
+//   {
+//     revalidate: 15,
+//     tags: ["admin_teams", "leaderboard"],
+//   }
+// );
+
 const getTeamData = unstable_cache(
   async () => {
     return prisma.teamProfile.findMany({
       include: {
         user: { select: { id: true, username: true, is_active: true } },
         assigned_contest: { select: { id: true, name: true } },
+        team_score: true, // include the TeamScore relation
       },
-      orderBy: [{ total_score: "desc" }, { total_penalty: "asc" }],
+      orderBy: [
+        { team_score: { totalScore: "desc" } }, // order by actual totalScore
+        { team_score: { totalPenalty: "asc" } }
+      ],
     });
   },
   ["admin_teams"],
@@ -40,6 +63,7 @@ const getTeamData = unstable_cache(
     tags: ["admin_teams", "leaderboard"],
   }
 );
+
 
 // Helper object for category display
 const CATEGORY_STYLES: Record<string, string> = {
@@ -124,7 +148,7 @@ export default async function TeamsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent border-slate-100 bg-slate-50/50">
-                      <TableHead className="w-[80px] text-center h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">Rank</TableHead>
+                      <TableHead className="w-20 text-center h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">Rank</TableHead>
                       <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">Team Identity</TableHead>
                       <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">Contest & Location</TableHead>
                       <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">Category</TableHead>
@@ -208,7 +232,8 @@ export default async function TeamsPage() {
                           </TableCell>
                           <TableCell className="text-right py-4 align-middle">
                             <span className="font-bold text-slate-900">
-                              {team.total_score}
+                              {/* {team.total_score} */}
+                              {team.team_score?.totalScore ?? 0}
                             </span>
                           </TableCell>
                           <TableCell className="text-center py-4 align-middle">

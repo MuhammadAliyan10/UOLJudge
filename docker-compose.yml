@@ -1,10 +1,12 @@
+version: "3.9"
+
 services:
   db:
     image: postgres:15-alpine
-    command: postgres -c 'max_connections=200'
+    command: ["postgres", "-c", "max_connections=200"]
     container_name: uol_judge_db
     ports:
-      - "5435:5432" # External:Internal
+      - "5435:5432"
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: uol0512
@@ -17,29 +19,27 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.5' # Increased for Windows stability
-          memory: 1G  # Increased for DB stability
+          cpus: "1.5"
+          memory: 1G
 
   app:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        - http_proxy=
-        - https_proxy=
-        - HTTP_PROXY=
-        - HTTPS_PROXY=
-        - no_proxy=*
-        - NO_PROXY=*
+        http_proxy: ""
+        https_proxy: ""
+        HTTP_PROXY: ""
+        HTTPS_PROXY: ""
+        no_proxy: "*"
+        NO_PROXY: "*"
     container_name: uol_judge_app
     ports:
       - "3000:3000"
     environment:
-      # Connect to 'db' service
-      DATABASE_URL: postgresql://admin:uol0512@db:5432/uol_judge?connection_limit=20
-      # NOTE: On Tuesday, change this to your Cloudflare URL if tunneling!
-      NEXT_PUBLIC_WS_URL: ws://localhost:3001
-      NODE_ENV: production
+      DATABASE_URL: "postgresql://admin:uol0512@db:5432/uol_judge?connection_limit=20"
+      NEXT_PUBLIC_WS_URL: "ws://localhost:3001"
+      NODE_ENV: "production"
     depends_on:
       - db
     restart: always
@@ -47,29 +47,28 @@ services:
       - uol-network
     volumes:
       - ./uploads:/app/public/uploads
-    command: node server.js
+    command: ["node", "server.js"]
 
   ws-server:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        - http_proxy=
-        - https_proxy=
-        - HTTP_PROXY=
-        - HTTPS_PROXY=
-        - no_proxy=*
-        - NO_PROXY=*
+        http_proxy: ""
+        https_proxy: ""
+        HTTP_PROXY: ""
+        HTTPS_PROXY: ""
+        no_proxy: "*"
+        NO_PROXY: "*"
     container_name: uol_judge_ws
     ports:
       - "3001:3001"
     environment:
-      NODE_ENV: production
+      NODE_ENV: "production"
     restart: always
     networks:
       - uol-network
-    # Runs the TypeScript server using the installed tsx
-    command: npx tsx server/ws-server.ts
+    command: ["npx", "tsx", "server/ws-server.ts"]
 
 networks:
   uol-network:
