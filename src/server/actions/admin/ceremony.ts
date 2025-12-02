@@ -74,18 +74,21 @@ export async function generateCeremony(contestId: string) {
       },
     },
     orderBy: [
-      { solvedCount: "desc" },
-      { totalPenalty: "asc" },
+      { solvedCount: "desc" },  // 1st: Most problems solved
+      { totalScore: "desc" },   // 2nd: Highest total score
+      { totalPenalty: "asc" },  // 3rd: Lowest penalty (tiebreaker)
     ],
   });
 
   // Filter teams for this contest and transform data
   const rankings = teamScores
     .filter((score) => score.team.assigned_contest_id === contestId)
+    .filter((score) => score.solvedCount > 0) // Only include teams with at least 1 solved problem
     .map((score, index) => ({
       rank: index + 1,
       teamName: score.team.display_name,
       solvedCount: score.solvedCount,
+      totalScore: score.totalScore,
       totalPenalty: score.totalPenalty,
     }));
 

@@ -13,8 +13,8 @@ import { AlertTriangle } from "lucide-react";
 interface ContestLayoutClientProps {
   teamName: string;
   teamId: string; // Added teamId
-  teamScore: number;
-  teamRank?: number; // Added optional teamRank
+  initialScore?: number;
+  initialRank?: number; // Added optional teamRank
   contestEndTime?: Date;
   contestStartTime?: Date;
   teamCategory: Category;
@@ -27,8 +27,8 @@ interface ContestLayoutClientProps {
 export function ContestLayoutClient({
   teamName,
   teamId,
-  teamScore,
-  teamRank,
+  initialScore = 0,
+  initialRank,
   contestEndTime: initialEndTime,
   contestStartTime: initialStartTime,
   teamCategory,
@@ -102,8 +102,8 @@ export function ContestLayoutClient({
       <ContestHeader
         teamName={teamName}
         teamId={teamId}
-        teamScore={teamScore}
-        teamRank={teamRank}
+        initialScore={initialScore}
+        initialRank={initialRank}
         teamCategory={teamCategory}
         contestEndTime={endTime}
         contestStartTime={startTime}

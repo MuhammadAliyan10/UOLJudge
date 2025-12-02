@@ -15,8 +15,8 @@ import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
 export interface ContestHeaderProps {
     teamName: string;
     teamId: string;
-    teamScore: number;
-    teamRank?: number;
+    initialScore?: number;
+    initialRank?: number;
     teamCategory: Category;
     contestEndTime?: Date;
     contestStartTime?: Date;
@@ -27,8 +27,8 @@ export interface ContestHeaderProps {
 export default function ContestHeader({
     teamName,
     teamId,
-    teamScore,
-    teamRank,
+    initialScore = 0,
+    initialRank,
     teamCategory,
     contestEndTime,
     contestStartTime,
@@ -38,16 +38,22 @@ export default function ContestHeader({
     const pathname = usePathname();
 
     // Real-time score and rank updates
-    const [liveScore, setLiveScore] = useState(teamScore);
-    const [liveRank, setLiveRank] = useState(teamRank);
+    const [liveScore, setLiveScore] = useState(initialScore);
+    const [liveRank, setLiveRank] = useState(initialRank);
 
     // WebSocket for live updates
     useContestSocket({
         onLeaderboardUpdate: (payload) => {
             // Update score if this is our team
             if (payload.teamId === teamId) {
-                setLiveScore(payload.totalScore || payload.solvedCount * 100);
-                // Rank would need to be calculated server-side, or we can omit for now
+                // Use totalScore from payload
+                if (payload.totalScore !== undefined) {
+                    setLiveScore(payload.totalScore);
+                }
+                // Update rank if provided
+                if (payload.rank !== undefined) {
+                    setLiveRank(payload.rank);
+                }
             }
         },
     });

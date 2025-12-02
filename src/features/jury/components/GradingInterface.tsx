@@ -60,8 +60,14 @@ export function GradingInterface({ submission, history, currentJuryUsername }: G
     const router = useRouter();
     const [grading, setGrading] = useState(false);
     const [grantingRetry, setGrantingRetry] = useState(false);
-    const [comment, setComment] = useState("");
-    const [manualScore, setManualScore] = useState<string>("");
+
+    // Pre-fill if submission is already graded
+    const isGraded = submission.status === 'ACCEPTED' || submission.status === 'REJECTED';
+    const [comment, setComment] = useState(isGraded && submission.juryComment ? submission.juryComment : "");
+    const [manualScore, setManualScore] = useState<string>(
+        isGraded && submission.manualScore != null ? String(submission.manualScore) : ""
+    );
+
     const [fileContent, setFileContent] = useState<string | null>(null);
     const [isBinary, setIsBinary] = useState(false);
     const [loadingFile, setLoadingFile] = useState(true);
@@ -453,7 +459,7 @@ export function GradingInterface({ submission, history, currentJuryUsername }: G
                                                 className="bg-green-600 hover:bg-green-700 text-white font-bold h-12 shadow-sm"
                                             >
                                                 <CheckCircle size={16} className="mr-2" />
-                                                ACCEPT
+                                                {isGraded ? "UPDATE" : "ACCEPT"}
                                             </Button>
                                             <Button
                                                 onClick={() => handleGrade("REJECTED")}
@@ -464,7 +470,7 @@ export function GradingInterface({ submission, history, currentJuryUsername }: G
                                                 )}
                                             >
                                                 <XCircle size={16} className="mr-2" />
-                                                REJECT
+                                                {isGraded ? "UPDATE" : "REJECT"}
                                             </Button>
                                         </div>
 

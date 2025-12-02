@@ -7,6 +7,7 @@ interface TeamRank {
     rank: number;
     teamName: string;
     solvedCount: number;
+    totalScore: number;
     totalPenalty: number;
 }
 
@@ -122,6 +123,27 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
         .results-table tbody tr {
             border-bottom: 1px solid #e2e8f0;
             transition: all 0.3s ease;
+        }
+
+        /* Zebra Striping */
+        .results-table tbody tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        /* Gold/Silver/Bronze highlights for Top 3 */
+        .results-table tbody tr[data-rank="1"] {
+            background: linear-gradient(135deg, #fff9db 0%, #fff4c4 100%);
+            border-left: 4px solid #FFD700;
+        }
+
+        .results-table tbody tr[data-rank="2"] {
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            border-left: 4px solid #C0C0C0;
+        }
+
+        .results-table tbody tr[data-rank="3"] {
+            background: linear-gradient(135deg, #ffe9d6 0%, #ffd9b8 100%);
+            border-left: 4px solid #CD7F32;
         }
 
         .results-table tbody tr.hiding {
@@ -303,7 +325,7 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
                     <tr data-rank="${team.rank}" style="animation-delay: ${index * 0.1}s">
                         <td class="rank">#${team.rank}</td>
                         <td class="name">${team.teamName}</td>
-                        <td class="score">${team.solvedCount}</td>
+                        <td class="score">${team.totalScore} pts</td>
                     </tr>
                     `).join('')}
                 </tbody>
@@ -316,7 +338,7 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
                     <div class="medal">🥉</div>
                     <div class="podium-rank">3rd Place</div>
                     <div class="podium-name">${top3[2]?.teamName || 'N/A'}</div>
-                    <div class="podium-score">${top3[2]?.solvedCount || 0}</div>
+                    <div class="podium-score">${top3[2]?.totalScore || 0} pts</div>
                 </div>
                 
                 <!-- 2nd Place -->
@@ -324,7 +346,7 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
                     <div class="medal">🥈</div>
                     <div class="podium-rank">2nd Place</div>
                     <div class="podium-name">${top3[1]?.teamName || 'N/A'}</div>
-                    <div class="podium-score">${top3[1]?.solvedCount || 0}</div>
+                    <div class="podium-score">${top3[1]?.totalScore || 0} pts</div>
                 </div>
                 
                 <!-- 1st Place -->
@@ -332,7 +354,7 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
                     <div class="medal">🥇</div>
                     <div class="podium-rank">Champion</div>
                     <div class="podium-name">${top3[0]?.teamName || 'N/A'}</div>
-                    <div class="podium-score">${top3[0]?.solvedCount || 0}</div>
+                    <div class="podium-score">${top3[0]?.totalScore || 0} pts</div>
                 </div>
             </div>
         </div>

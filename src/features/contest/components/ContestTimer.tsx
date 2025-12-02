@@ -35,6 +35,24 @@ export function ContestTimer({
             if (payload.endTime) setEndTime(new Date(payload.endTime));
             if (payload.startTime) setStartTime(new Date(payload.startTime)); // Handle start time updates
         },
+        onTimeUpdate: (payload) => {
+            // Handle TIME_UPDATE events when contest time is extended
+            if (payload.endTime) {
+                setEndTime(new Date(payload.endTime));
+            }
+        },
+        onContestUpdate: (payload) => {
+            // Handle CONTEST_UPDATE events
+            if (payload.endTime) {
+                setEndTime(new Date(payload.endTime));
+            }
+            if (payload.startTime) {
+                setStartTime(new Date(payload.startTime));
+            }
+            if (payload.isPaused !== undefined) {
+                setIsPaused(payload.isPaused);
+            }
+        },
     });
 
     // Local tick mechanism

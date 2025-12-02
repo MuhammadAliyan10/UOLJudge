@@ -159,7 +159,7 @@ export default async function ContestIdLayout({
         <ContestLayoutClient
             teamName={teamProfile.display_name}
             teamId={session.userId}
-            teamScore={teamProfile.total_score}
+            initialScore={teamProfile.total_score}
             teamCategory={teamProfile.category}
             contestId={contest.id}
             contestStartTime={contest.startTime}
