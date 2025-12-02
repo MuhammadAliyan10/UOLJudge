@@ -66,6 +66,9 @@ export async function createTeamAction(formData: FormData) {
     return { success: false, error: result.error.issues[0].message };
   const data = result.data;
 
+  // Parse maxDevices
+  const maxDevices = parseInt(formData.get("maxDevices") as string) || 2;
+
   try {
     // Fetch contest to derive category
     const contest = await db.contest.findUnique({
@@ -96,9 +99,12 @@ export async function createTeamAction(formData: FormData) {
           team_profile: {
             create: {
               display_name: data.displayName,
+              members: [], // Members removed as per requirement
               category: category,
               lab_location: data.labLocation || "Unknown",
               assigned_contest_id: data.contestId,
+              max_devices: maxDevices,
+              authorized_devices: [], // Initialize empty
             },
           },
         },
@@ -148,6 +154,10 @@ export async function updateTeamAction(formData: FormData) {
     return { success: false, error: result.error.issues[0].message };
   const data = result.data;
 
+  // Parse maxDevices (new field)
+  const maxDevicesRaw = formData.get("maxDevices");
+  const maxDevices = maxDevicesRaw ? parseInt(maxDevicesRaw as string) : undefined;
+
   try {
     // Fetch contest to derive category
     const contest = await db.contest.findUnique({
@@ -164,10 +174,14 @@ export async function updateTeamAction(formData: FormData) {
       return { success: false, error: "Contest not found" };
     }
 
-    // Get current team profile to check if contest changed
+    // Get current team profile to check if contest changed or device quota reduced
     const currentProfile = await db.teamProfile.findUnique({
       where: { user_id: data.id },
-      select: { assigned_contest_id: true },
+      select: {
+        assigned_contest_id: true,
+        max_devices: true,
+        authorized_devices: true
+      },
     });
 
     // Derive category from contest's first problem
@@ -185,6 +199,18 @@ export async function updateTeamAction(formData: FormData) {
         },
       },
     };
+
+
+
+    // Handle maxDevices update with quota reduction check
+    if (maxDevices !== undefined) {
+      updateData.team_profile.update.max_devices = maxDevices;
+
+      // If reducing device limit, purge authorized devices to force re-login
+      if (currentProfile && maxDevices < (currentProfile.max_devices || 2)) {
+        updateData.team_profile.update.authorized_devices = [];
+      }
+    }
 
     // Only update password if a new one is typed
     if (data.password && data.password.length > 0) {
@@ -259,6 +285,29 @@ export async function deleteTeamAction(teamId: string) {
       error:
         "Deletion failed. Ensure no system dependencies remain (e.g., active registrations).",
     };
+  }
+}
+
+export async function bulkDeleteTeamsAction(teamIds: string[]) {
+  const session = await getSession();
+  if (session?.role !== "ADMIN")
+    return { success: false, error: "Unauthorized" };
+
+  try {
+    await db.$transaction(async (tx) => {
+      // 1. Clean submissions
+      await tx.submission.deleteMany({ where: { userId: { in: teamIds } } });
+      // 2. Delete team profiles
+      await tx.teamProfile.deleteMany({ where: { user_id: { in: teamIds } } });
+      // 3. Delete users
+      await tx.user.deleteMany({ where: { id: { in: teamIds } } });
+    });
+
+    revalidatePath("/admin/teams");
+    return { success: true };
+  } catch (e: any) {
+    console.error("Bulk delete error:", e);
+    return { success: false, error: "Bulk deletion failed." };
   }
 }
 

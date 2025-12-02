@@ -160,3 +160,68 @@ export async function extendContestTime(contestId: string, minutes: number) {
         return { success: false, error: "Failed to extend time" };
     }
 }
+
+/**
+ * Emergency Stop: End contest immediately (The Kill Switch)
+ * Sets endTime to now, broadcasts to clients, and creates audit log
+ */
+export async function endContestImmediately(contestId: string) {
+    const session = await getSession();
+    if (!session || session.role !== "ADMIN") {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    try {
+        const contest = await prisma.contest.findUnique({ where: { id: contestId } });
+        if (!contest) return { success: false, error: "Contest not found" };
+
+        const now = new Date();
+
+        // Force contest to end immediately
+        const updatedContest = await prisma.contest.update({
+            where: { id: contestId },
+            data: {
+                endTime: now,
+                isPaused: false, // Ensure "ENDED" state, not "PAUSED"
+            },
+        });
+
+        // Create audit log
+        await prisma.systemLog.create({
+            data: {
+                action: "CONTEST_UPDATE",
+                level: "WARN",
+                message: "Contest force-ended by Admin",
+                details: `Contest "${contest.name}" (${contestId}) was ended immediately by ${session.username}`,
+                metadata: {
+                    contestId,
+                    contestName: contest.name,
+                    originalEndTime: contest.endTime.toISOString(),
+                    forcedEndTime: now.toISOString(),
+                    adminUsername: session.username,
+                },
+                user_id: session.userId,
+            },
+        });
+
+        // Broadcast to all connected clients
+        await broadcastToWsServer("CONTEST_STATUS_UPDATE", {
+            contestId,
+            endTime: updatedContest.endTime,
+            isPaused: false,
+            status: "ENDED",
+        });
+
+        revalidatePath("/admin/contests");
+        revalidatePath(`/contest/${contestId}`);
+
+        return {
+            success: true,
+            message: "Contest ended immediately",
+            endTime: updatedContest.endTime
+        };
+    } catch (error) {
+        console.error("Error ending contest:", error);
+        return { success: false, error: "Failed to end contest" };
+    }
+}

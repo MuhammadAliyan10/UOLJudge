@@ -8,6 +8,7 @@ import ContestHeader from "@/features/contest/components/ContestHeader";
 import ContestNotStarted from "@/features/contest/components/ContestNotStarted";
 import ContestEnded from "@/features/contest/components/ContestEnded";
 import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
+import { BlockedOverlay } from "@/features/contest/components/BlockedOverlay";
 import { AlertTriangle } from "lucide-react";
 
 interface ContestLayoutClientProps {
@@ -21,6 +22,7 @@ interface ContestLayoutClientProps {
   contestId?: string;
   isPaused?: boolean;
   isFrozen?: boolean;
+  isBlocked?: boolean; // NEW: Team blocked status
   children: React.ReactNode;
 }
 
@@ -35,12 +37,14 @@ export function ContestLayoutClient({
   contestId,
   isPaused: initialPaused = false,
   isFrozen: initialFrozen = false,
+  isBlocked: initialBlocked = false, // NEW: Blocked status
   children,
 }: ContestLayoutClientProps) {
   const router = useRouter();
 
   // State
   const [contestStatus, setContestStatus] = useState<"PRE_START" | "ACTIVE" | "ENDED">("ACTIVE");
+  const [isBlocked, setIsBlocked] = useState(initialBlocked); // NEW: State for blocked status
   const [isPaused, setIsPaused] = useState(initialPaused);
   const [isFrozen, setIsFrozen] = useState(initialFrozen);
   const [endTime, setEndTime] = useState<Date | undefined>(initialEndTime);
@@ -90,6 +94,15 @@ export function ContestLayoutClient({
       console.log("🔄 Contest Update:", payload);
       if (payload.contestId === contestId || !contestId) {
         router.refresh();
+      }
+    },
+    onTeamStatusUpdate: (payload) => {
+      if (payload.teamId === teamId) {
+        console.log("🚫 Team Blocked Status Update:", payload);
+        setIsBlocked(payload.isBlocked);
+        if (payload.isBlocked) {
+          router.refresh(); // Force server re-check to be safe
+        }
       }
     },
     onConnect: () => console.log("✅ Connected to Contest Socket"),
@@ -143,6 +156,9 @@ export function ContestLayoutClient({
           )}
         </div>
       </main>
+
+      {/* Blocked Overlay - Full Screen Disqualification */}
+      {isBlocked && <BlockedOverlay />}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Activity, TrendingUp } from "lucide-react";
 import { getSystemMetrics, type SystemMetrics } from "@/server/actions/admin/system-health";
+import { getSystemSetting } from "@/features/admin/server-actions/admin-settings";
 import { LambdaGauge } from "@/features/admin/components/dashboard/LambdaGauge";
 
 /**
@@ -12,6 +13,8 @@ import { LambdaGauge } from "@/features/admin/components/dashboard/LambdaGauge";
 export default function HealthChartsCard() {
     const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [cpuThreshold, setCpuThreshold] = useState(80); // Default
+    const [ramThreshold, setRamThreshold] = useState(70); // Default (as percentage)
 
     // Fetch metrics function
     const fetchMetrics = async () => {
@@ -44,6 +47,17 @@ export default function HealthChartsCard() {
 
         // CRITICAL: Cleanup interval on unmount to prevent memory leaks
         return () => clearInterval(interval);
+    }, []);
+
+    // Fetch dynamic thresholds from SystemSetting on mount
+    useEffect(() => {
+        const fetchThresholds = async () => {
+            const cpu = await getSystemSetting("CPU_WARNING_THRESHOLD");
+            const ram = await getSystemSetting("RAM_WARNING_THRESHOLD");
+            if (cpu) setCpuThreshold(parseInt(cpu));
+            if (ram) setRamThreshold(parseInt(ram));
+        };
+        fetchThresholds();
     }, []);
 
     // Initial Loading State
@@ -94,7 +108,7 @@ export default function HealthChartsCard() {
                     max={100}
                     title="CPU Usage"
                     unit="%"
-                    threshold={70}
+                    threshold={cpuThreshold}
                 />
 
                 {/* Memory Gauge */}
@@ -103,7 +117,7 @@ export default function HealthChartsCard() {
                     max={metrics?.memoryTotal ?? null}
                     title="Memory Usage"
                     unit="MB"
-                    threshold={70}
+                    threshold={ramThreshold}
                 />
 
                 {/* Disk Gauge */}

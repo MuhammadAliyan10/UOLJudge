@@ -105,6 +105,23 @@ export function LeaderboardClient({
       // Refresh from server to get updated scores
       router.refresh();
     },
+    onStatusUpdate: (payload) => {
+      // Fix: When contest ends, force countdown to zero
+      if (payload.endTime) {
+        const endTime = new Date(payload.endTime);
+        const now = new Date();
+
+        if (endTime <= now) {
+          // Force countdown to show 00:00:00
+          setTimeDigits({
+            h1: "0", h2: "0",
+            m1: "0", m2: "0",
+            s1: "0", s2: "0"
+          });
+        }
+      }
+      router.refresh();
+    },
   });
 
   // Update teams when initialTeams prop changes (from router.refresh())

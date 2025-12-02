@@ -12,10 +12,8 @@ async function ensureAdmin() {
     }
 }
 
-// Get a system setting by key
+// Get a system setting by key (Public access for maintenance mode, etc.)
 export async function getSystemSetting(key: string) {
-    await ensureAdmin();
-
     const setting = await prisma.systemSetting.findUnique({
         where: { key },
     });

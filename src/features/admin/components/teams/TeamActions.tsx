@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal, Edit, Shield, ShieldOff, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { MoreHorizontal, Edit, Shield, ShieldOff, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
 } from "@/features/shared/ui/dropdown-menu";
 import { Button } from "@/features/shared/ui/button";
-import { EditTeamDialog } from "./EditTeamDialog";
+import { EditTeamSheet } from "./EditTeamSheet";
 import { deleteTeamAction } from "@/server/actions/admin/admin";
 import { toggleTeamBlock } from "@/server/actions/team/team-control";
 import { toast } from "sonner";
@@ -106,7 +106,7 @@ export function TeamActions({ team }: { team: any }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <EditTeamDialog team={team} open={openEdit} onOpenChange={setOpenEdit} />
+      <EditTeamSheet team={team} open={openEdit} onOpenChange={setOpenEdit} />
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent className="bg-white">

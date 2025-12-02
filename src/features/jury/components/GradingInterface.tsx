@@ -12,6 +12,7 @@ import { Badge } from "@/features/shared/ui/badge";
 import { Separator } from "@/features/shared/ui/separator";
 import { ScrollArea } from "@/features/shared/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/features/shared/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/features/shared/ui/alert-dialog";
 import {
     FileCode,
     CheckCircle,
@@ -60,6 +61,11 @@ export function GradingInterface({ submission, history, currentJuryUsername }: G
     const router = useRouter();
     const [grading, setGrading] = useState(false);
     const [grantingRetry, setGrantingRetry] = useState(false);
+
+    // AlertDialog states
+    const [showRegradeDialog, setShowRegradeDialog] = useState(false);
+    const [showRetryDialog, setShowRetryDialog] = useState(false);
+    const [pendingVerdict, setPendingVerdict] = useState<"ACCEPTED" | "REJECTED" | null>(null);
 
     // Pre-fill if submission is already graded
     const isGraded = submission.status === 'ACCEPTED' || submission.status === 'REJECTED';
@@ -169,12 +175,16 @@ export function GradingInterface({ submission, history, currentJuryUsername }: G
 
         // Confirm re-grade if already graded
         if (submission.status !== "PENDING") {
-            const confirmRegrade = confirm(
-                `This submission is already marked as ${submission.status}. Re-grade it as ${verdict}?`
-            );
-            if (!confirmRegrade) return;
+            setPendingVerdict(verdict);
+            setShowRegradeDialog(true);
+            return;
         }
 
+        // Direct grading for PENDING submissions
+        await performGrade(verdict);
+    };
+
+    const performGrade = async (verdict: "ACCEPTED" | "REJECTED") => {
         setGrading(true);
 
         try {
@@ -182,14 +192,13 @@ export function GradingInterface({ submission, history, currentJuryUsername }: G
                 submission.id,
                 verdict,
                 comment.trim() || undefined,
-                manualScore ? parseFloat(manualScore) : undefined // NEW: Pass manual score
+                manualScore ? parseFloat(manualScore) : undefined
             );
 
             if (result.success) {
                 toast.success(result.message || "Submission graded successfully");
-                // Refresh to show updated history instead of redirecting
                 router.refresh();
-                setComment(""); // Clear comment after successful grade
+                setComment("");
             } else {
                 toast.error(result.error || "Failed to grade submission");
             }
@@ -198,14 +207,16 @@ export function GradingInterface({ submission, history, currentJuryUsername }: G
             toast.error("An error occurred while grading");
         } finally {
             setGrading(false);
+            setShowRegradeDialog(false);
+            setPendingVerdict(null);
         }
     };
 
     const handleGrantRetry = async () => {
-        if (!confirm("Grant retry request for this team? They will be able to submit again.")) {
-            return;
-        }
+        setShowRetryDialog(true);
+    };
 
+    const performGrantRetry = async () => {
         setGrantingRetry(true);
 
         try {
@@ -222,6 +233,7 @@ export function GradingInterface({ submission, history, currentJuryUsername }: G
             toast.error("An error occurred while granting retry");
         } finally {
             setGrantingRetry(false);
+            setShowRetryDialog(false);
         }
     };
 
@@ -540,6 +552,49 @@ export function GradingInterface({ submission, history, currentJuryUsername }: G
                         </div>
                     </Panel>
                 </PanelGroup>
+
+                {/* Regrade Confirmation Dialog */}
+                <AlertDialog open={showRegradeDialog} onOpenChange={setShowRegradeDialog}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Confirm Re-grade</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This submission is already marked as <strong>{submission.status}</strong>.
+                                Are you sure you want to re-grade it as <strong>{pendingVerdict}</strong>?
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={() => pendingVerdict && performGrade(pendingVerdict)}
+                                className="bg-blue-600 hover:bg-blue-700"
+                            >
+                                Confirm Re-grade
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Retry Grant Confirmation Dialog */}
+                <AlertDialog open={showRetryDialog} onOpenChange={setShowRetryDialog}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Grant Retry Request</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Are you sure you want to grant a retry for this team? They will be able to submit again.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={performGrantRetry}
+                                className="bg-orange-600 hover:bg-orange-700"
+                            >
+                                Grant Retry
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </div>
     );

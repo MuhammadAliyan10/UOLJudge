@@ -105,6 +105,11 @@ model TeamProfile {
   // NEW: Real-time score tracking
   team_score TeamScore?
 
+  // NEW: Device Session Management (Prevent Credential Sharing)
+  max_devices        Int  @default(2) @map("max_devices")
+  authorized_devices Json @default("[]") @map("authorized_devices")
+  // Structure: [{ deviceId: "uuid", userAgent: "...", lastSeen: "ISO-date", ipAddress: "..." }]
+
   @@index([category])
   @@index([assigned_contest_id])
   @@map("team_profile")

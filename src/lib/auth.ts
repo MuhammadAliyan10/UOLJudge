@@ -1,3 +1,4 @@
+"use server"
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
@@ -17,6 +18,7 @@ export interface SessionPayload {
     username: string;
     role: UserRole;
     teamId?: string; // Only for PARTICIPANTS
+    sessionId?: string; // For device tracking
     iat?: number;
     exp?: number;
     [key: string]: unknown; // Index signature for JWT compatibility

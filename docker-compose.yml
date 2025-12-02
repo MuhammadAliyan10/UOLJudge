@@ -50,7 +50,7 @@ services:
       DATABASE_URL: "postgresql://admin:uol0512@db:5432/uol_judge?connection_limit=20"
 
       # 🛑 CRITICAL: This MUST match your current Cloudflare Socket URL
-      NEXT_PUBLIC_WS_URL: wss://der-remix-coins-think.trycloudflare.com
+      NEXT_PUBLIC_WS_URL: http://ws-server:3001
 
       # Internal networking for Docker-to-Docker communication
       INTERNAL_WS_URL: http://ws-server:3001

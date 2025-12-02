@@ -1,17 +1,10 @@
 import { getJuryMembersWithAssignments } from "@/server/actions/jury/jury-management";
-import { Shield, Users, Calendar, ShieldPlus } from "lucide-react";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/features/shared/ui/table";
+import { ShieldPlus, Users } from "lucide-react";
 import { Card, CardContent } from "@/features/shared/ui/card";
-import { Badge } from "@/features/shared/ui/badge";
-import { CreateJuryDialog } from "@/features/admin/components/jury/CreateJuryDialog";
-import { JuryActions } from "@/features/admin/components/jury/JuryActions";
+import { CreateJurySheet } from "@/features/admin/components/jury/CreateJurySheet";
+import { DataTable } from "@/features/shared/components/ui/data-table";
+import { columns } from "@/features/admin/components/jury/columns";
+import { EmptyState } from "@/features/shared/components/EmptyState";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +28,7 @@ export default async function JuryManagementPage() {
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <CreateJuryDialog />
+                        <CreateJurySheet />
                     </div>
                 </div>
 
@@ -52,73 +45,19 @@ export default async function JuryManagementPage() {
                     </div>
 
                     <CardContent className="p-0">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent border-slate-100 bg-slate-50/50">
-                                    <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                                        Username
-                                    </TableHead>
-                                    <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                                        Assigned Contests
-                                    </TableHead>
-                                    <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                                        Created At
-                                    </TableHead>
-                                    <TableHead className="w-[50px] h-10 py-0"></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {juryMembers.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={4} className="text-center py-12 text-slate-400">
-                                            No jury members found. Create your first jury member to get started.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    juryMembers.map((jury) => (
-                                        <TableRow
-                                            key={jury.id}
-                                            className="group border-slate-50 hover:bg-slate-50/80 transition-all"
-                                        >
-                                            <TableCell className="py-4 align-middle">
-                                                <div className="flex items-center gap-2">
-                                                    <ShieldPlus size={14} className="text-primary" />
-                                                    <code className="text-sm  font-bold text-slate-900">
-                                                        {jury.username}
-                                                    </code>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="py-4 align-middle">
-                                                {jury.assignedContests.length === 0 ? (
-                                                    <span className="text-xs text-slate-400 italic">No contests assigned</span>
-                                                ) : (
-                                                    <div className="flex flex-wrap gap-1.5">
-                                                        {jury.assignedContests.map((contest) => (
-                                                            <Badge
-                                                                key={contest.id}
-                                                                variant="outline"
-                                                                className="rounded-sm  text-[10px] tracking-wide px-2 py-0.5 bg-primary text-white border-primary"
-                                                            >
-                                                                {contest.name}
-                                                            </Badge>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="py-4 align-middle">
-                                                <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                                                    <Calendar size={12} />
-                                                    {new Date(jury.created_at).toLocaleDateString()}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right pr-4 py-4 align-middle">
-                                                <JuryActions jury={jury} />
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
+                        {juryMembers.length === 0 ? (
+                            <div className="p-6">
+                                <EmptyState
+                                    icon={ShieldPlus}
+                                    title="No Jury Members"
+                                    description="Create your first jury member to get started."
+                                />
+                            </div>
+                        ) : (
+                            <div className="p-6">
+                                <DataTable columns={columns} data={juryMembers} filterColumn="username" />
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

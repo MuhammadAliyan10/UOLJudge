@@ -22,7 +22,7 @@ import {
 import { Button } from "@/features/shared/ui/button";
 import { deleteJuryMemberAction } from "@/server/actions/jury/jury-management";
 import { toast } from "sonner";
-import { EditJuryAssignmentsDialog } from "./EditJuryAssignmentsDialog";
+import { EditJuryAssignmentsSheet } from "./EditJuryAssignmentsSheet";
 
 interface JuryActionsProps {
     jury: {
@@ -63,7 +63,7 @@ export function JuryActions({ jury }: JuryActionsProps) {
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-8 w-8 p-0"
                     >
                         <MoreVertical size={14} />
                     </Button>
@@ -83,7 +83,7 @@ export function JuryActions({ jury }: JuryActionsProps) {
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            <EditJuryAssignmentsDialog
+            <EditJuryAssignmentsSheet
                 jury={jury}
                 open={editDialogOpen}
                 onOpenChange={setEditDialogOpen}

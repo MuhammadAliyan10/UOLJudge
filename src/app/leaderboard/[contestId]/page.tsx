@@ -69,7 +69,7 @@ export default async function ContestLeaderboardPage({ params }: PageProps) {
         ],
       });
 
-      const formattedTeams = teamScores.map((ts) => {
+      let formattedTeams = teamScores.map((ts) => {
         const solvedProblemIds = new Set(
           ts.team.user.submissions.map((s) => s.problemId)
         );
@@ -89,6 +89,30 @@ export default async function ContestLeaderboardPage({ params }: PageProps) {
           solved_indexes: solvedIndexes,
         };
       });
+
+      // If no scores yet (Pre-Start), fetch all registered teams
+      if (formattedTeams.length === 0) {
+        const registeredTeams = await prisma.teamProfile.findMany({
+          where: {
+            assigned_contest_id: cId,
+            is_active: true,
+          },
+          include: {
+            user: { select: { username: true } },
+          },
+        });
+
+        formattedTeams = registeredTeams.map((team) => ({
+          id: team.id,
+          display_name: team.display_name,
+          username: team.user.username,
+          category: team.category,
+          total_score: 0,
+          total_penalty: 0,
+          solved_count: 0,
+          solved_indexes: [],
+        }));
+      }
 
       return { teams: formattedTeams, contest };
     },

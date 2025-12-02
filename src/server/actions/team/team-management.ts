@@ -24,14 +24,12 @@ export interface TeamCredential {
     username: string;
     password: string;
     category: string;
-    members: string[];
 }
 
 interface ParsedTeam {
     teamName: string;
     category: Category;
-    member1: string;
-    member2: string;
+    maxDevices: number;
 }
 
 const CsvRowSchema = z.object({
@@ -39,8 +37,7 @@ const CsvRowSchema = z.object({
     category: z.enum(["CORE", "WEB", "ANDROID"], {
         message: "Category must be CORE, WEB, or ANDROID",
     }),
-    member1: z.string().min(1, "Member 1 name is required"),
-    member2: z.string().min(1, "Member 2 name is required"),
+    maxDevices: z.number().min(1).max(3).optional().default(2),
 });
 
 // ============================================================
@@ -98,20 +95,20 @@ function parseCsvToTeams(csvContent: string): {
 
         const parts = line.split(",").map((part) => part.trim());
 
-        if (parts.length < 4) {
+        if (parts.length < 2) {
             errors.push(
-                `Row ${i + 1}: Invalid format. Expected: TeamName,Category,Member1,Member2`
+                `Row ${i + 1}: Invalid format. Expected: TeamName,Category[,MaxDevices]`
             );
             continue;
         }
 
-        const [teamName, category, member1, member2] = parts;
+        const [teamName, category, maxDevicesStr] = parts;
+        const maxDevices = maxDevicesStr ? parseInt(maxDevicesStr) : 2;
 
         const validation = CsvRowSchema.safeParse({
             teamName,
             category: category.toUpperCase(),
-            member1,
-            member2,
+            maxDevices,
         });
 
         if (!validation.success) {
@@ -203,9 +200,11 @@ export async function bulkImportTeams(
                             user_id: user.id,
                             display_name: team.teamName,
                             category: team.category,
-                            members: [team.member1, team.member2], // Store as JSON array
+                            members: [], // Members removed as per requirement
                             lab_location: "TBD", // Can be updated later
                             assigned_contest_id: contestId,
+                            max_devices: team.maxDevices,
+                            authorized_devices: [],
                         },
                     });
 
@@ -236,7 +235,6 @@ export async function bulkImportTeams(
                     username,
                     password,
                     category: team.category,
-                    members: [team.member1, team.member2],
                 });
 
                 successCount++;

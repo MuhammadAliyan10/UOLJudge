@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal, Edit, ListChecks, Clock, Trash2, ToggleLeft, ToggleRight, Snowflake, Eye, Trophy } from "lucide-react";
+import { MoreHorizontal, Edit, ListChecks, Clock, Trash2, ToggleLeft, ToggleRight, Snowflake, Eye, Trophy, StopCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,13 +11,16 @@ import {
   DropdownMenuSeparator,
 } from "@/features/shared/ui/dropdown-menu";
 import { Button } from "@/features/shared/ui/button";
-import { EditContestDialog } from "./EditContestDialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/features/shared/ui/alert-dialog";
+
 import { ManageProblemsDialog } from "./ManageProblemsDialog";
 import { ExtendContestDialog } from "./ExtendContestDialog";
 import { DeleteContestDialog } from "./DeleteContestDialog";
 import { toast } from "sonner";
 import { updateContestAction, toggleContestFreezeAction } from "@/server/actions/admin/admin";
+import { endContestImmediately } from "@/server/actions/contest/contest-control";
 import Link from "next/link";
+import { EditContestSheet } from "./EditContestSheet";
 
 export function ContestActions({ contest }: { contest: any }) {
   const router = useRouter();
@@ -25,8 +28,10 @@ export function ContestActions({ contest }: { contest: any }) {
   const [openProblems, setOpenProblems] = useState(false);
   const [openExtend, setOpenExtend] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [openEndContest, setOpenEndContest] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const [isTogglingFreeze, setIsTogglingFreeze] = useState(false);
+  const [isEndingContest, setIsEndingContest] = useState(false);
 
   const handleToggleStatus = async () => {
     setIsTogglingStatus(true);
@@ -75,6 +80,25 @@ export function ContestActions({ contest }: { contest: any }) {
       toast.error("An error occurred");
     } finally {
       setIsTogglingFreeze(false);
+    }
+  };
+
+  const handleEndContest = async () => {
+    setIsEndingContest(true);
+    try {
+      const result = await endContestImmediately(contest.id);
+
+      if (result.success) {
+        toast.success("Contest ended immediately");
+        router.refresh();
+        setOpenEndContest(false);
+      } else {
+        toast.error(result.error || "Failed to end contest");
+      }
+    } catch (error) {
+      toast.error("An error occurred");
+    } finally {
+      setIsEndingContest(false);
     }
   };
 
@@ -137,6 +161,13 @@ export function ContestActions({ contest }: { contest: any }) {
           <DropdownMenuSeparator />
 
           <DropdownMenuItem
+            onClick={() => setOpenEndContest(true)}
+            className="text-red-600 focus:text-red-600 focus:bg-red-50"
+          >
+            <StopCircle className="mr-2 h-4 w-4" /> End Contest
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
             onClick={() => setOpenDelete(true)}
             className="text-red-600 focus:text-red-600 focus:bg-red-50"
           >
@@ -146,7 +177,7 @@ export function ContestActions({ contest }: { contest: any }) {
       </DropdownMenu>
 
       {/* Dialogs */}
-      <EditContestDialog
+      <EditContestSheet
         contest={contest}
         open={openEdit}
         onOpenChange={setOpenEdit}
@@ -171,6 +202,31 @@ export function ContestActions({ contest }: { contest: any }) {
         open={openDelete}
         onOpenChange={setOpenDelete}
       />
+
+      {/* End Contest AlertDialog */}
+      <AlertDialog open={openEndContest} onOpenChange={setOpenEndContest}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>End Contest Immediately?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will immediately stop the timer and reject all future submissions.
+              The contest will be marked as ended and students will no longer be able to submit.
+              <br /><br />
+              <strong className="text-red-600">This action cannot be undone.</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleEndContest}
+              disabled={isEndingContest}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isEndingContest ? "Ending..." : "End Contest Now"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

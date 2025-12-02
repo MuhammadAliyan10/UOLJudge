@@ -100,7 +100,7 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
   // Use environment variable or default to localhost
   const WS_URL =
     process.env.NEXT_PUBLIC_WS_URL ||
-    "wss://der-remix-coins-think.trycloudflare.com";
+    "ws://localhost:3001";
   const connect = () => {
     // Stop trying after 5 failed attempts if we never connected
     if (reconnectAttempts.current > 5 && !wsRef.current) {

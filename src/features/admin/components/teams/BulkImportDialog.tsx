@@ -54,11 +54,11 @@ export function BulkImportDialog({ contests }: BulkImportDialogProps) {
 
             if (result.success && result.credentials && result.credentials.length > 0) {
                 // Generate credentials CSV for download
-                const csvHeader = "Team Name,Username,Password,Category,Member 1,Member 2\n";
+                const csvHeader = "Team Name,Username,Password,Category\n";
                 const csvRows = result.credentials
                     .map(
                         (cred) =>
-                            `${cred.teamName},${cred.username},${cred.password},${cred.category},${cred.members[0] || ""},${cred.members[1] || ""}`
+                            `${cred.teamName},${cred.username},${cred.password},${cred.category}`
                     )
                     .join("\n");
                 const csvData = csvHeader + csvRows;
@@ -121,7 +121,7 @@ export function BulkImportDialog({ contests }: BulkImportDialogProps) {
                     <DialogDescription>
                         Upload a CSV file with team data. Expected format:{" "}
                         <code className="bg-slate-100 px-1 rounded text-xs">
-                            TeamName,Category,Member1Name,Member2Name
+                            TeamName,Category[,MaxDevices]
                         </code>
                     </DialogDescription>
                 </DialogHeader>
@@ -149,7 +149,7 @@ export function BulkImportDialog({ contests }: BulkImportDialogProps) {
                         <Label htmlFor="csv">CSV Data</Label>
                         <Textarea
                             id="csv"
-                            placeholder="TeamName,Category,Member1Name,Member2Name&#10;Alpha Squad,CORE,Alice Johnson,Bob Smith&#10;Web Warriors,WEB,Charlie Davis,Diana Evans"
+                            placeholder="TeamName,Category,MaxDevices&#10;Alpha Squad,CORE,2&#10;Web Warriors,WEB,2"
                             value={csvContent}
                             onChange={(e) => setCsvContent(e.target.value)}
                             rows={10}
@@ -165,6 +165,7 @@ export function BulkImportDialog({ contests }: BulkImportDialogProps) {
                                 <p className="text-blue-900 font-medium">Important Notes:</p>
                                 <ul className="text-blue-700 space-y-0.5 list-disc list-inside">
                                     <li>Category must be: CORE, WEB, or ANDROID</li>
+                                    <li>MaxDevices is optional (defaults to 2, max 3)</li>
                                     <li>Usernames will be auto-generated (e.g., team_web_a8x9)</li>
                                     <li>Passwords will be 6-character random strings</li>
                                     <li>Credentials will download automatically after import</li>
