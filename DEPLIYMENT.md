@@ -117,3 +117,16 @@ docker-compose logs -f
 # Only Next.js app
 docker-compose logs -f app
 ```
+
+
+## Master one cp command
+
+```bash
+docker-compose down -v && \
+docker-compose build --no-cache && \
+docker-compose up -d && \
+echo "⏳ Waiting 15s for Database to initialize..." && \
+sleep 15 && \
+docker-compose exec app tsx prisma/seed.ts && \
+echo "✅ SYSTEM READY! Login: admin / uol0512"
+```

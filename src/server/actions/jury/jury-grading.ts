@@ -113,6 +113,29 @@ export async function gradeSubmissionAction(
         // STEP 4: ATOMIC TRANSACTION - Update Everything
         // ============================================================
         const result = await prisma.$transaction(async (tx) => {
+            // ============================================================
+            // RACE CONDITION PREVENTION (SECURITY AUDIT V4.0)
+            // ============================================================
+            // Re-fetch submission inside transaction to check current status
+            const currentSubmission = await tx.submission.findUnique({
+                where: { id: submissionId },
+                select: { status: true, judgedById: true },
+            });
+
+            if (!currentSubmission) {
+                throw new Error("Submission not found");
+            }
+
+            // PREVENT CONCURRENT GRADING: If already graded by another jury, block this operation
+            if (
+                currentSubmission.status !== SubmissionStatus.PENDING &&
+                currentSubmission.judgedById !== juryId
+            ) {
+                throw new Error(
+                    `RACE_CONDITION_BLOCKED: This submission was already graded by another jury member. Refresh to see the latest status.`
+                );
+            }
+
             const teamId = submission.user.team_profile?.id;
             const problemId = submission.problemId;
             const contestStartTime = submission.problem.contest.startTime;

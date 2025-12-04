@@ -13,21 +13,31 @@ interface TeamListTableProps {
 export function TeamListTable({ data }: TeamListTableProps) {
     const router = useRouter();
 
-    const handleDeleteSelected = async (selectedIds: string[]) => {
-        const promise = bulkDeleteTeamsAction(selectedIds);
+    const handleDeleteSelected = async (selectedIds: string[], resetSelection?: () => void) => {
+        try {
+            toast.loading(`Deleting ${selectedIds.length} teams...`);
 
-        toast.promise(promise, {
-            loading: `Deleting ${selectedIds.length} teams...`,
-            success: (result) => {
-                if (result.success) {
-                    router.refresh();
-                    return `Successfully deleted ${selectedIds.length} teams`;
-                } else {
-                    throw new Error(result.error);
+            const result = await bulkDeleteTeamsAction(selectedIds);
+
+            if (result.success) {
+                toast.dismiss();
+                toast.success(`Successfully deleted ${selectedIds.length} teams`);
+
+                // Clear table selection if reset function provided
+                if (resetSelection) {
+                    resetSelection();
                 }
-            },
-            error: (err) => err.message || "Failed to delete teams",
-        });
+
+                // Refresh data
+                router.refresh();
+            } else {
+                toast.dismiss();
+                toast.error(result.error || "Failed to delete teams");
+            }
+        } catch (err: any) {
+            toast.dismiss();
+            toast.error(err.message || "An unexpected error occurred");
+        }
     };
 
     return (

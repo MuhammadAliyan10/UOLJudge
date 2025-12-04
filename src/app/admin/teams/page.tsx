@@ -10,6 +10,7 @@ import { unstable_cache } from "next/cache";
 import AdminTableRefresher from "@/features/admin/components/refreshTable/AdminTableRefresher";
 import { EmptyState } from "@/features/shared/components/EmptyState";
 import { TeamListTable } from "@/features/admin/components/teams/TeamListTable";
+import { AdminWebSocketListener } from "@/features/admin/components/AdminWebSocketListener";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +19,29 @@ export const dynamic = "force-dynamic";
 const getTeamData = unstable_cache(
   async () => {
     return prisma.teamProfile.findMany({
-      include: {
-        user: { select: { id: true, username: true, is_active: true } },
-        assigned_contest: { select: { id: true, name: true } },
-        team_score: true, // include the TeamScore relation
+      select: {
+        id: true,
+        display_name: true,
+        members: true,
+        category: true,
+        lab_location: true,
+        max_devices: true,
+        authorized_devices: true,
+        is_blocked: true, // Include blocked status for real-time updates
+        user: {
+          select: {
+            id: true,
+            username: true,
+            is_active: true
+          }
+        },
+        assigned_contest: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        team_score: true,
       },
       orderBy: [
         { team_score: { totalScore: "desc" } }, // order by actual totalScore
@@ -51,6 +71,9 @@ export default async function TeamsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 lg:p-10 font-sans text-slate-900">
+      {/* WebSocket Listener for Real-time Updates */}
+      <AdminWebSocketListener />
+
       <div className="max-w-[1400px] mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-slate-200 pb-6">

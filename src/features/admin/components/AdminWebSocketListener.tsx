@@ -1,40 +1,41 @@
 "use client";
 
 import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useDebouncedRefresh } from "@/hooks/useDebouncedRefresh";
 
 /**
  * WebSocket Listener for Admin Portal
  * Listens for real-time updates and triggers page revalidation
+ * Uses debounced refresh to prevent hydration errors and server thrashing
  */
 export function AdminWebSocketListener() {
-    const router = useRouter();
+    const refresh = useDebouncedRefresh(300);
 
     useContestSocket({
         // Team status changes (blocking/unblocking)
         onTeamStatusUpdate: () => {
-            router.refresh();
+            console.log("[AdminWebSocketListener] Team status updated - refreshing...");
+            refresh();
         },
         // New submissions
         onNewSubmission: () => {
-            router.refresh();
+            refresh();
         },
         // Submission grading updates
         onSubmissionUpdate: () => {
-            router.refresh();
+            refresh();
         },
         // Leaderboard changes
         onLeaderboardUpdate: () => {
-            router.refresh();
+            refresh();
         },
         // Contest status changes (pause/resume)
         onStatusUpdate: () => {
-            router.refresh();
+            refresh();
         },
         // Jury queue updates
         onJuryQueueUpdate: () => {
-            router.refresh();
+            refresh();
         },
     });
 

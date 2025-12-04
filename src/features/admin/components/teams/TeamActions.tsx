@@ -39,7 +39,7 @@ export function TeamActions({ team }: { team: any }) {
       const result = await toggleTeamBlock(team.id);
       if (result.success) {
         toast.success(result.isBlocked ? "Team blocked" : "Team unblocked");
-        router.refresh();
+        // No need to call router.refresh() - WebSocket listener will handle it
       } else {
         toast.error(result.error || "Failed to toggle block status");
       }

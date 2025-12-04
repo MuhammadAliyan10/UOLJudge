@@ -9,7 +9,16 @@ import ContestNotStarted from "@/features/contest/components/ContestNotStarted";
 import ContestEnded from "@/features/contest/components/ContestEnded";
 import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
 import { BlockedOverlay } from "@/features/contest/components/BlockedOverlay";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Megaphone } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/features/shared/ui/alert-dialog";
 
 interface ContestLayoutClientProps {
   teamName: string;
@@ -49,6 +58,10 @@ export function ContestLayoutClient({
   const [isFrozen, setIsFrozen] = useState(initialFrozen);
   const [endTime, setEndTime] = useState<Date | undefined>(initialEndTime);
   const [startTime, setStartTime] = useState<Date | undefined>(initialStartTime);
+
+  // Announcement modal state
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
+  const [announcementMessage, setAnnouncementMessage] = useState("");
 
   // ---------------------------------------------------
   // A. CONTEST STATUS LOGIC (Local Timer)
@@ -105,6 +118,13 @@ export function ContestLayoutClient({
         }
       }
     },
+    onAnnouncement: (payload) => {
+      console.log("📢 Admin Announcement Received:", payload);
+      if (payload.message) {
+        setAnnouncementMessage(payload.message);
+        setAnnouncementOpen(true);
+      }
+    },
     onConnect: () => console.log("✅ Connected to Contest Socket"),
     onDisconnect: () => console.log("❌ Disconnected from Contest Socket"),
   });
@@ -159,6 +179,26 @@ export function ContestLayoutClient({
 
       {/* Blocked Overlay - Full Screen Disqualification */}
       {isBlocked && <BlockedOverlay />}
+
+      {/* Announcement Modal - Persistent until dismissed */}
+      <AlertDialog open={announcementOpen} onOpenChange={setAnnouncementOpen}>
+        <AlertDialogContent className="bg-white max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-xl">
+              <Megaphone className="h-6 w-6 text-blue-600" />
+              Admin Announcement
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base text-slate-700 pt-2">
+              {announcementMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setAnnouncementOpen(false)}>
+              Dismiss
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

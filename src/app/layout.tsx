@@ -24,6 +24,11 @@ export const metadata: Metadata = {
   description: "Official offline competitive programming system for UOL.",
 };
 
+// 3. Force Dynamic Rendering
+// This prevents Next.js from trying to prerender this layout at build time,
+// which would fail because the database isn't available during Docker build
+export const dynamic = 'force-dynamic';
+
 export default async function RootLayout({
   children,
 }: Readonly<{

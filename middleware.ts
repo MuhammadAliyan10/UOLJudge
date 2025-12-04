@@ -7,6 +7,7 @@ import { UserRole } from '@prisma/client';
 // ============================================================
 
 const PUBLIC_ROUTES = ['/', '/login'];
+const LEADERBOARD_ROUTES = ['/leaderboard']; // Allow all authenticated users
 const ADMIN_ROUTES = ['/admin'];
 const JURY_ROUTES = ['/jury'];
 const CONTEST_ROUTES = ['/contest'];
@@ -77,7 +78,17 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
         return NextResponse.redirect(dashboardUrl);
     }
 
-    // 5. Role-based access control (ZERO-TRUST ENFORCEMENT)
+    // 5. Allow leaderboard access for all authenticated users (before role checks)
+    const isLeaderboardRoute = LEADERBOARD_ROUTES.some((route) =>
+        pathname.startsWith(route)
+    );
+
+    if (isLeaderboardRoute) {
+        // Leaderboard is accessible to all authenticated users regardless of role
+        return await updateSession(request);
+    }
+
+    // 6. Role-based access control (ZERO-TRUST ENFORCEMENT)
     const isAdminRoute = ADMIN_ROUTES.some((route) =>
         pathname.startsWith(route)
     );
@@ -112,7 +123,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
         }
     }
 
-    // 6. Refresh session (sliding window expiration)
+    // 7. Refresh session (sliding window expiration)
     return await updateSession(request);
 }
 

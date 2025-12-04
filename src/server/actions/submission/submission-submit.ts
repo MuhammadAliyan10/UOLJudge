@@ -35,7 +35,7 @@ export async function submitSolution(formData: FormData): Promise<SubmitResponse
         const file = formData.get("file") as File | null;
         const problemId = formData.get("problemId") as string;
         const contestId = formData.get("contestId") as string;
-        const userId = formData.get("userId") as string; 
+        const userId = formData.get("userId") as string;
 
         // Basic validation
         if (!file) {
@@ -46,10 +46,35 @@ export async function submitSolution(formData: FormData): Promise<SubmitResponse
             return { success: false, message: "Missing required fields" };
         }
 
-        // File size validation (50MB max)
-        const MAX_SIZE = 50 * 1024 * 1024;
-        if (file.size > MAX_SIZE) {
-            return { success: false, message: "File size exceeds 50MB limit" };
+        // ============================================================
+        // CATEGORY-SPECIFIC FILE SIZE VALIDATION (SECURITY AUDIT V4.0)
+        // ============================================================
+        // Fetch team category first to determine size limit
+        const tempUser = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { team_profile: true },
+        });
+
+        if (!tempUser || !tempUser.team_profile) {
+            return { success: false, message: "Team profile not found" };
+        }
+
+        const category = tempUser.team_profile.category;
+
+        // STRICT FILE SIZE LIMITS BY CATEGORY
+        const SIZE_LIMITS: Record<string, { bytes: number; label: string }> = {
+            CORE: { bytes: 5 * 1024 * 1024, label: "5MB" },      // 5MB for source code
+            WEB: { bytes: 50 * 1024 * 1024, label: "50MB" },      // 50MB for web projects
+            ANDROID: { bytes: 50 * 1024 * 1024, label: "50MB" },  // 50MB for APK files
+        };
+
+        const sizeLimit = SIZE_LIMITS[category] || SIZE_LIMITS.CORE;
+
+        if (file.size > sizeLimit.bytes) {
+            return {
+                success: false,
+                message: `File too large. Max limit for ${category} is ${sizeLimit.label}`
+            };
         }
 
         if (file.size === 0) {
@@ -94,8 +119,27 @@ export async function submitSolution(formData: FormData): Promise<SubmitResponse
         }
 
         // ============================================================
-        // STEP 3: CATEGORY ISOLATION CHECK (CRITICAL)
+        // STEP 3: SECURITY CHECKS (CRITICAL)
         // ============================================================
+
+        // 3A: CROSS-CONTEST ISOLATION CHECK
+        // Prevent teams from submitting to problems in different contests
+        if (user.team_profile.assigned_contest_id !== problem.contestId) {
+            return {
+                success: false,
+                message: `SECURITY_VIOLATION: Cross-contest submission blocked. Your team is assigned to a different contest.`,
+            };
+        }
+
+        // 3B: TEAM BLOCKED STATUS CHECK (Kill Switch)
+        if (user.team_profile.is_blocked) {
+            return {
+                success: false,
+                message: `Your team has been blocked from submitting. Contact administrator.`,
+            };
+        }
+
+        // 3C: CATEGORY ISOLATION CHECK
         if (user.team_profile.category !== problem.category) {
             return {
                 success: false,
@@ -128,14 +172,14 @@ export async function submitSolution(formData: FormData): Promise<SubmitResponse
 
         if (!validateFileType(fileExtension, user.team_profile.category)) {
             const allowedTypes: Record<string, string> = {
-                CORE: ".cpp, .c, .java, .py",
-                WEB: ".zip",
-                ANDROID: ".apk",
+                CORE: ".c, .cpp, .cc, .cxx, .py, .java, .cs, .js, .ts, .go, .rs, .kt, .swift, .txt (NO zip/binaries)",
+                WEB: ".zip, .rar, .7z, .tar, .gz",
+                ANDROID: ".apk, .aab, .zip, .rar, .7z",
             };
 
             return {
                 success: false,
-                message: `Invalid file type for ${user.team_profile.category} category. Allowed: ${allowedTypes[user.team_profile.category]}`,
+                message: `Invalid file type '.${fileExtension}' for ${user.team_profile.category} category. Allowed: ${allowedTypes[user.team_profile.category]}`,
             };
         }
 

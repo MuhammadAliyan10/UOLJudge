@@ -31,6 +31,12 @@ export async function updateSystemSetting(key: string, value: string) {
         create: { key, value },
     });
 
+    // FEATURE: ANNOUNCEMENT BROADCAST VIA WEBSOCKET
+    if (key === "GLOBAL_ANNOUNCEMENT" && value.trim().length > 0) {
+        const { broadcastContestUpdate } = await import("@/lib/ws-broadcast");
+        await broadcastContestUpdate("ANNOUNCEMENT", { message: value });
+    }
+
     revalidatePath("/admin/settings");
     return { success: true };
 }

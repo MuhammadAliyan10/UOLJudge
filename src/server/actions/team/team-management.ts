@@ -30,6 +30,7 @@ interface ParsedTeam {
     teamName: string;
     category: Category;
     maxDevices: number;
+    labLocation?: string; // Optional lab location
 }
 
 const CsvRowSchema = z.object({
@@ -38,6 +39,7 @@ const CsvRowSchema = z.object({
         message: "Category must be CORE, WEB, or ANDROID",
     }),
     maxDevices: z.number().min(1).max(3).optional().default(2),
+    labLocation: z.string().optional(), // Optional lab location
 });
 
 // ============================================================
@@ -102,13 +104,14 @@ function parseCsvToTeams(csvContent: string): {
             continue;
         }
 
-        const [teamName, category, maxDevicesStr] = parts;
+        const [teamName, category, maxDevicesStr, labLocation] = parts;
         const maxDevices = maxDevicesStr ? parseInt(maxDevicesStr) : 2;
 
         const validation = CsvRowSchema.safeParse({
             teamName,
             category: category.toUpperCase(),
             maxDevices,
+            labLocation: labLocation?.trim() || undefined,
         });
 
         if (!validation.success) {
@@ -201,7 +204,7 @@ export async function bulkImportTeams(
                             display_name: team.teamName,
                             category: team.category,
                             members: [], // Members removed as per requirement
-                            lab_location: "TBD", // Can be updated later
+                            lab_location: team.labLocation || "TBD", // Use provided location or default to TBD
                             assigned_contest_id: contestId,
                             max_devices: team.maxDevices,
                             authorized_devices: [],

@@ -412,6 +412,16 @@ export function GradingInterface({ submission, history, currentJuryUsername }: G
                                         </Alert>
                                     )}
 
+                                    {/* On-Time Submission Notice */}
+                                    {penaltySuggestion && !penaltySuggestion.isLate && (
+                                        <Alert className="border-green-300 bg-green-50">
+                                            <CheckCircle className="h-4 w-4 text-green-600" />
+                                            <AlertDescription className="text-green-800 text-xs">
+                                                <strong>On-Time Submission</strong> - No penalty applied (within {submission.problem.contest.safeZoneMinutes}m safe zone)
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+
                                     {/* Manual Score Input */}
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">

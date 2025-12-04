@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
+import { Megaphone } from "lucide-react";
 import {
     Card,
     CardContent,
@@ -72,6 +73,7 @@ interface SettingsClientProps {
 export function SettingsClient({ initialSettings, counts }: SettingsClientProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [purgeLoading, setPurgeLoading] = useState(false);
+    const [isBroadcasting, setIsBroadcasting] = useState(false);
 
     const stats = [
         {
@@ -171,6 +173,24 @@ export function SettingsClient({ initialSettings, counts }: SettingsClientProps)
             toast.error("Failed to purge logs");
         } finally {
             setPurgeLoading(false);
+        }
+    }
+
+    async function handleBroadcastAnnouncement() {
+        setIsBroadcasting(true);
+        try {
+            const announcement = generalForm.getValues("announcement");
+            if (!announcement || announcement.trim().length === 0) {
+                toast.error("Announcement is empty");
+                return;
+            }
+            // Broadcast via WebSocket by updating the setting
+            await updateSystemSetting("GLOBAL_ANNOUNCEMENT", announcement);
+            toast.success("🔊 Announcement broadcasted to all connected users!");
+        } catch (error) {
+            toast.error("Failed to broadcast announcement");
+        } finally {
+            setIsBroadcasting(false);
         }
     }
 
@@ -330,7 +350,24 @@ export function SettingsClient({ initialSettings, counts }: SettingsClientProps)
                                     name="announcement"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Global Announcement</FormLabel>
+                                            <div className="flex items-center justify-between">
+                                                <FormLabel>Global Announcement</FormLabel>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={handleBroadcastAnnouncement}
+                                                    disabled={isBroadcasting}
+                                                    className="gap-2"
+                                                >
+                                                    {isBroadcasting ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                        <Megaphone className="h-4 w-4" />
+                                                    )}
+                                                    Broadcast via WebSocket
+                                                </Button>
+                                            </div>
                                             <FormControl>
                                                 <Textarea
                                                     placeholder="e.g., Lunch Break at 1PM. System will be paused."
@@ -339,7 +376,7 @@ export function SettingsClient({ initialSettings, counts }: SettingsClientProps)
                                                 />
                                             </FormControl>
                                             <FormDescription>
-                                                This message will be displayed as a system-wide banner to all users
+                                                This message will be displayed as a system-wide banner to all users. Use the Broadcast button to send instant notifications.
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>

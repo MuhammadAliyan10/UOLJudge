@@ -1,44 +1,47 @@
+# 1. Base Image (Slim is fine for runtime/deps)
 FROM node:20-slim AS base
 
-# 1. Install Dependencies
+# 2. Install Dependencies
 FROM base AS deps
-# Override any proxy settings from Docker daemon
 ARG http_proxy=""
 ARG https_proxy=""
 ARG HTTP_PROXY=""
 ARG HTTPS_PROXY=""
 ARG no_proxy="*"
 ARG NO_PROXY="*"
+
 RUN apt-get update -y && apt-get install -y openssl ca-certificates
 WORKDIR /app
 COPY package.json package-lock.json* ./
-# Clean install
 RUN npm ci
 
-# 2. Build the App
-FROM base AS builder
-# Install OpenSSL for Prisma
+# 3. Build the App (Use Full Node Image)
+FROM node:20 AS builder
+
 ARG http_proxy=""
 ARG https_proxy=""
 ARG HTTP_PROXY=""
 ARG HTTPS_PROXY=""
 ARG no_proxy="*"
 ARG NO_PROXY="*"
-RUN apt-get update -y && apt-get install -y openssl libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma Client (Critical for DB access)
+# Generate Prisma Client
 RUN npx prisma generate
 
+# 🛑 THE FIX IS HERE:
+# We provide a fake URL so Prisma doesn't crash during the build.
+# This is NOT used in production (docker-compose overrides it).
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+
 # Build Next.js
-# Note: We skip type checking for speed in production build if you are confident
 RUN npm run build
 
-# 3. Production Runner
+# 4. Production Runner (Back to Slim)
 FROM base AS runner
-# Install OpenSSL for Prisma runtime
 ARG http_proxy=""
 ARG https_proxy=""
 ARG HTTP_PROXY=""
@@ -54,26 +57,22 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy Public Assets
+# Copy Assets
 COPY --from=builder /app/public ./public
-
-# Set permissions
 RUN mkdir .next
 RUN chown nextjs:nodejs .next
 
 # Copy Standalone Output
-# This is the "Magic" folder Next.js creates
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy Server Code (For WebSocket Engine)
+# Copy Server Code
 COPY --from=builder --chown=nextjs:nodejs /app/server ./server
 
 # Copy Prisma Folder (For Seeding)
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
-# Install Runtime Deps for WebSocket
-# We install 'ws' and 'tsx' explicitly in the runner
+# Install Runtime Deps
 COPY package.json ./
 RUN npm install ws --no-save && npm install -g tsx
 
@@ -85,5 +84,4 @@ EXPOSE 3001
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Default command (Overridden by docker-compose)
 CMD ["node", "server.js"]

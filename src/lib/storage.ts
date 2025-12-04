@@ -94,15 +94,54 @@ export function getFileExtension(filename: string): string {
 }
 
 /**
- * Validate file type based on category
+ * Validate file type based on category - SECURITY AUDIT V4.0
+ * 
+ * CORE: Single-file source code only (NO archives/binaries)
+ * WEB/ANDROID: Archives and packages only
  */
 export function validateFileType(fileType: string, category: string): boolean {
+    const normalizedType = fileType.toLowerCase();
+
     const allowedTypes: Record<string, string[]> = {
-        CORE: ["cpp", "c", "java", "py", "python"],
-        WEB: ["zip"],
-        ANDROID: ["apk"],
+        // CORE: Source code files ONLY - NO archives, NO binaries
+        CORE: [
+            // C/C++ variants
+            "c", "cpp", "cc", "cxx",
+            // Python
+            "py",
+            // Java
+            "java",
+            // C#
+            "cs",
+            // JavaScript/TypeScript
+            "js", "ts",
+            // Go
+            "go",
+            // Rust
+            "rs",
+            // Kotlin
+            "kt",
+            // Swift
+            "swift",
+            // Plain text (for algorithm descriptions)
+            "txt"
+        ],
+        // WEB: Archive files
+        WEB: ["zip", "rar", "7z", "tar", "gz", "tgz"],
+        // ANDROID: APK/AAB + Archives
+        ANDROID: ["apk", "aab", "zip", "rar", "7z", "tar", "gz"]
     };
 
     const allowed = allowedTypes[category] || [];
-    return allowed.includes(fileType.toLowerCase());
+    const isAllowed = allowed.includes(normalizedType);
+
+    // SECURITY: Explicit rejection of binary/executable files for CORE
+    if (category === "CORE") {
+        const bannedBinaryExtensions = ["exe", "dll", "so", "dylib", "bin", "zip", "rar", "7z", "tar", "gz"];
+        if (bannedBinaryExtensions.includes(normalizedType)) {
+            return false; // REJECT binaries/archives for CORE
+        }
+    }
+
+    return isAllowed;
 }

@@ -17,6 +17,7 @@ export type Team = {
     lab_location: string | null;
     max_devices: number | null;
     authorized_devices: any | null; // JSON
+    is_blocked: boolean; // Team blocked status (kill switch)
     user: {
         id: string;
         username: string;
@@ -185,7 +186,7 @@ export const columns: ColumnDef<Team>[] = [
                     lab_location: team.lab_location,
                     max_devices: team.max_devices || 2,
                     assigned_contest_id: team.assigned_contest?.id || null,
-                    is_blocked: !team.user.is_active // Assuming is_active false means blocked/banned
+                    is_blocked: team.is_blocked // Use the actual is_blocked field from database
                 },
             };
             return <TeamActions team={teamForEdit} />;

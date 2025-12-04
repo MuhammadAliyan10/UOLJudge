@@ -23,15 +23,22 @@ export default async function ContestIdLayout({
         return null; // This will be brief, Next.js will re-render with session
     }
 
-    // 2. Fetch Team Profile
+    // 2. Fetch Team Profile with REAL-TIME score from TeamScore
     const teamProfile = await prisma.teamProfile.findUnique({
         where: { user_id: session.userId },
         select: {
             display_name: true,
-            total_score: true,
             category: true,
             assigned_contest_id: true,
             is_active: true,
+            is_blocked: true,
+            // Fetch real-time score from TeamScore table (NOT cached total_score)
+            team_score: {
+                select: {
+                    totalScore: true,
+                    solvedCount: true,
+                },
+            },
         },
     });
 
@@ -159,13 +166,14 @@ export default async function ContestIdLayout({
         <ContestLayoutClient
             teamName={teamProfile.display_name}
             teamId={session.userId}
-            initialScore={teamProfile.total_score}
+            initialScore={teamProfile.team_score?.totalScore || 0}
             teamCategory={teamProfile.category}
             contestId={contest.id}
             contestStartTime={contest.startTime}
             contestEndTime={contest.endTime}
             isPaused={contest.isPaused}
             isFrozen={contest.isFrozen}
+            isBlocked={teamProfile.is_blocked}
         >
             {children}
         </ContestLayoutClient>

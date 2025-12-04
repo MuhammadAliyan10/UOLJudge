@@ -321,13 +321,19 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    ${allTeams.map((team, index) => `
-                    <tr data-rank="${team.rank}" style="animation-delay: ${index * 0.1}s">
+                    ${allTeams.map((team, index) => {
+        // Hide top 3 from table - they appear on podium only
+        const isTop3 = team.rank <= 3;
+        return `
+                    <tr data-rank="${team.rank}" 
+                        style="animation-delay: ${index * 0.1}s${isTop3 ? '; display: none;' : ''}"
+                        class="${isTop3 ? 'podium-team hidden' : ''}">
                         <td class="rank">#${team.rank}</td>
                         <td class="name">${team.teamName}</td>
                         <td class="score">${team.totalScore} pts</td>
                     </tr>
-                    `).join('')}
+                    `;
+    }).join('')}
                 </tbody>
             </table>
 
@@ -482,18 +488,36 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
                 }, 500);
                 
             } else if (stage === 3) {
-                // Reveal 1st place + Fireworks
+                // Reveal 1st place + Fireworks with DRAMATIC animation
                 const row1 = document.querySelector('tr[data-rank="1"]');
                 if (row1) row1.classList.add('hiding');
                 
+                // Dim background for dramatic effect
+                document.body.style.transition = 'background 0.5s ease';
+                document.body.style.background = 'rgba(240, 240, 240, 0.3)';
+                
                 setTimeout(() => {
-                    document.getElementById('place-1').classList.add('show');
+                    const first = document.getElementById('place-1');
+                    // Start from bottom-center, scaled down and transparent
+                    first.style.transform = 'translateY(200px) scale(0.5)';
+                    first.style.opacity = '0';
+                    first.classList.add('show');
+                    
+                    // Animate to final position with bounce
+                    setTimeout(() => {
+                        first.style.transition = 'all 1.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                        first.style.transform = 'translateY(0) scale(1)';
+                        first.style.opacity = '1';
+                    }, 100);
+                    
                     hint.innerHTML = '🎉 Congratulations to all winners! 🎉';
                     
-                    // Start fireworks
-                    canvas.classList.add('active');
-                    fireworksActive = true;
-                    animateFireworks();
+                    // Delay fireworks to let animation complete
+                    setTimeout(() => {
+                        canvas.classList.add('active');
+                        fireworksActive = true;
+                        animateFireworks();
+                    }, 1500); // Wait for animation to finish
                 }, 500);
             }
         }
