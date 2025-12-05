@@ -26,11 +26,61 @@ cd uol-judge
 ### Verify/Create .env (root directory)
 
 ```bash
-DATABASE_URL="postgresql://admin:uol0512@db:5432/uol_judge?schema=public"
-NEXT_PUBLIC_WS_URL="ws://localhost:3001"      # Will be overridden at runtime
-NODE_ENV="production"
+# Database Connection (Prisma)
+# postgres://USER:PASSWORD@HOST:PORT/DB_NAME
+# Ensure port 5435 matches your docker-compose db port mapping
+DATABASE_URL="postgresql://admin:uol0512@localhost:5435/uol_judge?schema=public"
+# 🛑 THE FIX: Use 'ws://' and 'localhost' for local dev
+NEXT_PUBLIC_WS_URL="ws://localhost:3001"
+# Node Environment
+NODE_ENV="development"
+NEXT_PUBLIC_ENABLE_WS=true
 ```
+### Verify/Create .dockerIgnore (root directory)
 
+```bash
+# CRITICAL: Prevent copying huge/local folders into the image
+node_modules
+.next
+.git
+.vscode
+.env
+.env*.local
+.env*
+!.env.example
+
+# Database & student data – NEVER copy into container
+pg-data
+postgres-data
+uploads
+public/uploads
+docker-data
+data
+
+# Build artifacts & caches
+dist
+build
+.out
+/.next
+/coverage
+/.turbo
+.turbo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+logs
+
+# OS / Editor garbage
+.DS_Store
+*.swp
+*~
+
+
+```
 
 ### Phase 2: Clean Slate Build
 Only required when behind university proxy (172.26.x.x network)
