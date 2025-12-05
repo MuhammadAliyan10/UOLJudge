@@ -85,7 +85,13 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
         /* Main Content - Table and Podium Container */
         .content {
             position: relative;
-            min-height: 600px;
+            min-height: 70vh;
+        }
+
+        /* Hide table when podium is active */
+        .podium-container.active ~ .results-table {
+            opacity: 0;
+            pointer-events: none;
         }
 
         /* Table Styles */
@@ -195,18 +201,22 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
 
         /* Podium Container */
         .podium-container {
-            position: absolute;
-            top: 0;
-            left: 0;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             width: 100%;
+            max-width: 1200px;
             display: flex;
             justify-content: center;
-            align-items: flex-end;
+            align-items: center;
             gap: 2rem;
-            height: 500px;
+            height: auto;
+            padding: 2rem;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.5s ease;
+            z-index: 100;
         }
 
         .podium-container.active {
@@ -255,18 +265,20 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
         }
 
         .podium-name {
-            font-size: 2rem;
+            font-size: 2.5rem;
             font-weight: 900;
             color: #1a202c;
             margin-bottom: 1rem;
             text-align: center;
-            max-width: 300px;
+            max-width: 350px;
+            line-height: 1.2;
         }
 
         .podium-score {
-            font-size: 3rem;
+            font-size: 3.5rem;
             font-weight: 900;
             color: #059669;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         /* Podium Order */
@@ -301,7 +313,7 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
 </head>
 <body>
     <canvas id="fireworks-canvas"></canvas>
-    
+
     <div class="container">
         <!-- Header -->
         <div class="header">
@@ -325,7 +337,7 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
         // Hide top 3 from table - they appear on podium only
         const isTop3 = team.rank <= 3;
         return `
-                    <tr data-rank="${team.rank}" 
+                    <tr data-rank="${team.rank}"
                         style="animation-delay: ${index * 0.1}s${isTop3 ? '; display: none;' : ''}"
                         class="${isTop3 ? 'podium-team hidden' : ''}">
                         <td class="rank">#${team.rank}</td>
@@ -346,7 +358,7 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
                     <div class="podium-name">${top3[2]?.teamName || 'N/A'}</div>
                     <div class="podium-score">${top3[2]?.totalScore || 0} pts</div>
                 </div>
-                
+
                 <!-- 2nd Place -->
                 <div class="podium-column second" id="place-2">
                     <div class="medal">🥈</div>
@@ -354,7 +366,7 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
                     <div class="podium-name">${top3[1]?.teamName || 'N/A'}</div>
                     <div class="podium-score">${top3[1]?.totalScore || 0} pts</div>
                 </div>
-                
+
                 <!-- 1st Place -->
                 <div class="podium-column first" id="place-1">
                     <div class="medal">🥇</div>
@@ -430,7 +442,7 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
         function createFirework(x, y) {
             const particleCount = 60;
             const color = colors[Math.floor(Math.random() * colors.length)];
-            
+
             for (let i = 0; i < particleCount; i++) {
                 particles.push(new Particle(x, y, color));
             }
@@ -470,48 +482,48 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
                     const row3 = document.querySelector('tr[data-rank="3"]');
                     if (row3) row3.classList.add('hiding');
                 }, 300);
-                
+
                 setTimeout(() => {
                     podium.classList.add('active');
                     document.getElementById('place-3').classList.add('show');
                     hint.innerHTML = 'Press <kbd>→</kbd> or <kbd>Space</kbd> to reveal 2nd place';
                 }, 800);
-                
+
             } else if (stage === 2) {
                 // Reveal 2nd place
                 const row2 = document.querySelector('tr[data-rank="2"]');
                 if (row2) row2.classList.add('hiding');
-                
+
                 setTimeout(() => {
                     document.getElementById('place-2').classList.add('show');
                     hint.innerHTML = 'Press <kbd>→</kbd> or <kbd>Space</kbd> to reveal Champion!';
                 }, 500);
-                
+
             } else if (stage === 3) {
                 // Reveal 1st place + Fireworks with DRAMATIC animation
                 const row1 = document.querySelector('tr[data-rank="1"]');
                 if (row1) row1.classList.add('hiding');
-                
+
                 // Dim background for dramatic effect
                 document.body.style.transition = 'background 0.5s ease';
                 document.body.style.background = 'rgba(240, 240, 240, 0.3)';
-                
+
                 setTimeout(() => {
                     const first = document.getElementById('place-1');
                     // Start from bottom-center, scaled down and transparent
                     first.style.transform = 'translateY(200px) scale(0.5)';
                     first.style.opacity = '0';
                     first.classList.add('show');
-                    
+
                     // Animate to final position with bounce
                     setTimeout(() => {
                         first.style.transition = 'all 1.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
                         first.style.transform = 'translateY(0) scale(1)';
                         first.style.opacity = '1';
                     }, 100);
-                    
+
                     hint.innerHTML = '🎉 Congratulations to all winners! 🎉';
-                    
+
                     // Delay fireworks to let animation complete
                     setTimeout(() => {
                         canvas.classList.add('active');
@@ -524,15 +536,15 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
 
         function prevStage() {
             if (stage <= 0) return;
-            
+
             // Stop fireworks if going back from stage 3
             if (stage === 3) {
                 fireworksActive = false;
                 canvas.classList.remove('active');
             }
-            
+
             stage--;
-            
+
             // Implement reverse logic if needed
             // For simplicity, just update hint
             if (stage === 0) {

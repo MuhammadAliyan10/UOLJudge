@@ -4,8 +4,6 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import NextTopLoader from "nextjs-toploader";
-import { getSystemSetting } from "@/features/admin/server-actions/admin-settings";
-import { GlobalAnnouncementBanner } from "@/components/GlobalAnnouncementBanner";
 
 // 1. Font Configuration
 // Using system fonts to avoid network dependency during Docker build
@@ -34,9 +32,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Fetch global announcement
-  const announcement = await getSystemSetting("GLOBAL_ANNOUNCEMENT");
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -52,8 +47,6 @@ export default async function RootLayout({
           easing="ease"
           shadow="0 0 10px #4F39F6,0 0 5px #4F39F6"
         />
-        {/* Global Announcement Banner */}
-        {announcement && <GlobalAnnouncementBanner message={announcement} />}
 
         <Toaster position="top-right" />
         {children}

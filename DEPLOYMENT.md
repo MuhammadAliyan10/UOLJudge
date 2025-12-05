@@ -127,6 +127,7 @@ docker-compose build --no-cache && \
 docker-compose up -d && \
 echo "⏳ Waiting 15s for Database to initialize..." && \
 sleep 15 && \
+docker compose exec app npx prisma db push && \
 docker-compose exec app tsx prisma/seed.ts && \
 echo "✅ SYSTEM READY! Login: admin / uol0512"
 ```

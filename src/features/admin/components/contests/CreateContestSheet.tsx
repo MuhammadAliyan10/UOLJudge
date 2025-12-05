@@ -244,9 +244,7 @@ export function CreateContestSheet() {
             </div>
 
             <SheetFooter className="px-6 py-4 bg-slate-50 border-t border-slate-100 ">
-              <SheetClose asChild>
-                <Button variant="outline">Close</Button>
-              </SheetClose>
+
               <Button
                 type="submit"
                 className="w-full h-11 bg-primary text-white hover:bg-primary/80 font-bold tracking-tight shadow-sm border border-primary hover:border-primary/80 transition-all"

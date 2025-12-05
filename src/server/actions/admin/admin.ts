@@ -303,6 +303,12 @@ export async function bulkDeleteTeamsAction(teamIds: string[]) {
       await tx.user.deleteMany({ where: { id: { in: teamIds } } });
     });
 
+    // Broadcast real-time update via WebSocket
+    await broadcastToWebSocket('CONTEST_UPDATE', {
+      action: 'bulk_team_delete',
+      teamIds
+    });
+
     revalidatePath("/admin/teams");
     return { success: true };
   } catch (e: any) {
