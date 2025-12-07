@@ -17,7 +17,7 @@ import NextTopLoader from "nextjs-toploader";
 export const metadata: Metadata = {
   title: {
     template: "%s | UOLJudge",
-    default: "UOLJudge - Competitive Programming Platform",
+    default: "UOLJudge | Competitive Programming Platform",
   },
   description: "Official offline competitive programming system for UOL.",
 };
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 // 3. Force Dynamic Rendering
 // This prevents Next.js from trying to prerender this layout at build time,
 // which would fail because the database isn't available during Docker build
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function RootLayout({
   children,
@@ -50,12 +50,7 @@ export default async function RootLayout({
 
         <Toaster position="top-right" />
         {children}
-        <Toaster
-          position="top-right"
-          theme="light"
-          richColors
-          closeButton
-        />
+        <Toaster position="top-right" theme="light" richColors closeButton />
       </body>
     </html>
   );

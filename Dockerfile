@@ -76,6 +76,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY package.json ./
 RUN npm install ws --no-save && npm install -g tsx
 
+# Create persistent storage directory for file uploads
+RUN mkdir -p /app/storage && chown nextjs:nodejs /app/storage
+
 USER nextjs
 
 EXPOSE 3000

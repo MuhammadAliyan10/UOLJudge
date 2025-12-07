@@ -98,9 +98,7 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
   const reconnectAttempts = useRef(0);
 
   // Use environment variable or default to localhost
-  const WS_URL =
-    process.env.NEXT_PUBLIC_WS_URL ||
-    "ws://localhost:3001";
+  const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://13.71.29.115:3001";
   const connect = () => {
     // Stop trying after 5 failed attempts if we never connected
     if (reconnectAttempts.current > 5 && !wsRef.current) {

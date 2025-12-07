@@ -50,13 +50,16 @@ services:
       DATABASE_URL: "postgresql://admin:uol0512@db:5432/uol_judge?connection_limit=20"
 
       # 🛑 CRITICAL: This MUST match your current Cloudflare Socket URL
-      NEXT_PUBLIC_WS_URL: ws://localhost:3001
+      NEXT_PUBLIC_WS_URL: ws://13.71.29.115:3001
 
       # Internal networking for Docker-to-Docker communication
       INTERNAL_WS_URL: http://ws-server:3001
 
       # Fix for login loop on HTTP/Tunnel
       FORCE_INSECURE_COOKIES: "true"
+
+      # Storage directory for file uploads
+      UPLOAD_DIR: "/app/storage"
 
       NODE_ENV: "production"
     depends_on:
@@ -66,8 +69,8 @@ services:
     networks:
       - uol-network
     volumes:
-      # PERSISTENCE: Saves student code to your Mac
-      - ./uploads:/app/public/uploads
+      # PERSISTENCE: Maps Azure VM disk to container storage directory
+      - ./uploads:/app/storage
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     command: ["node", "server.js"]
