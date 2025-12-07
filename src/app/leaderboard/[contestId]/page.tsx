@@ -27,6 +27,7 @@ export default async function ContestLeaderboardPage({ params }: PageProps) {
         select: {
           id: true,
           name: true,
+          startTime: true, // Add startTime for scheduled state detection
           endTime: true,
           frozenAt: true,
           problems: {
@@ -63,9 +64,9 @@ export default async function ContestLeaderboardPage({ params }: PageProps) {
           },
         },
         orderBy: [
-          { solvedCount: "desc" },  // Primary: Most solved
-          { totalScore: "desc" },   // Secondary: Highest score
-          { totalPenalty: "asc" },  // Tertiary: Fastest time
+          { solvedCount: "desc" }, // Primary: Most solved
+          { totalScore: "desc" }, // Secondary: Highest score
+          { totalPenalty: "asc" }, // Tertiary: Fastest time
         ],
       });
 
@@ -134,6 +135,7 @@ export default async function ContestLeaderboardPage({ params }: PageProps) {
     <LeaderboardClient
       teams={teams}
       contestName={contest.name}
+      contestStartTime={contest.startTime}
       contestEndTime={contest.endTime}
       isFrozen={isFrozen}
     />

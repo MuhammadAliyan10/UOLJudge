@@ -34,6 +34,7 @@ import { Button } from "@/features/shared/ui/button";
 import Link from "next/link";
 import { RequestRetryButton } from "@/features/contest/components/RequestRetryButton";
 import { SubmissionsWebSocketListener } from "@/features/contest/components/SubmissionsWebSocketListener";
+import { formatLocalTimeOnly } from "@/lib/utils/date";
 
 export const dynamic = "force-dynamic";
 
@@ -55,8 +56,8 @@ export default async function SubmissionsPage({
     where: {
       userId: session.userId,
       problem: {
-        contestId: contestId
-      }
+        contestId: contestId,
+      },
     },
     include: { problem: true },
     orderBy: { submittedAt: "desc" },
@@ -117,10 +118,18 @@ export default async function SubmissionsPage({
                   <Table>
                     <TableHeader>
                       <TableRow className="hover:bg-transparent border-slate-100 bg-slate-50/30">
-                        <TableHead className="font-semibold text-slate-600">Problem</TableHead>
-                        <TableHead className="font-semibold text-slate-600">Time</TableHead>
-                        <TableHead className="text-right font-semibold text-slate-600">Verdict</TableHead>
-                        <TableHead className="text-right font-semibold text-slate-600">Actions</TableHead>
+                        <TableHead className="font-semibold text-slate-600">
+                          Problem
+                        </TableHead>
+                        <TableHead className="font-semibold text-slate-600">
+                          Time
+                        </TableHead>
+                        <TableHead className="text-right font-semibold text-slate-600">
+                          Verdict
+                        </TableHead>
+                        <TableHead className="text-right font-semibold text-slate-600">
+                          Actions
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -140,8 +149,15 @@ export default async function SubmissionsPage({
                                   {submission.fileType || "Unknown"}
                                 </span>
                                 {/* Download Link (Optional) */}
-                                <Link href={`/api/download/${submission.id}`} target="_blank" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Download size={12} className="text-slate-400 hover:text-blue-600" />
+                                <Link
+                                  href={`/api/download/${submission.id}`}
+                                  target="_blank"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <Download
+                                    size={12}
+                                    className="text-slate-400 hover:text-blue-600"
+                                  />
                                 </Link>
                               </div>
                             </div>
@@ -152,12 +168,7 @@ export default async function SubmissionsPage({
                             <div className="flex items-center gap-1.5 text-slate-500">
                               <Clock size={14} className="text-slate-400" />
                               <span className="text-sm font-medium tabular-nums">
-                                {new Date(
-                                  submission.submittedAt
-                                ).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
+                                {formatLocalTimeOnly(submission.submittedAt)}
                               </span>
                             </div>
                           </TableCell>
@@ -165,13 +176,20 @@ export default async function SubmissionsPage({
                           {/* Verdict */}
                           <TableCell className="text-right">
                             <VerdictBadge verdict={submission.status} />
-                            {submission.retryRequested && !submission.canRetry && (
-                              <Badge variant="outline" className="ml-2 bg-orange-50 text-orange-700 border-orange-200 text-xs">
-                                Retry Requested
-                              </Badge>
-                            )}
+                            {submission.retryRequested &&
+                              !submission.canRetry && (
+                                <Badge
+                                  variant="outline"
+                                  className="ml-2 bg-orange-50 text-orange-700 border-orange-200 text-xs"
+                                >
+                                  Retry Requested
+                                </Badge>
+                              )}
                             {submission.canRetry && (
-                              <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200 text-xs">
+                              <Badge
+                                variant="outline"
+                                className="ml-2 bg-green-50 text-green-700 border-green-200 text-xs"
+                              >
                                 Retry Granted
                               </Badge>
                             )}
@@ -230,7 +248,7 @@ export default async function SubmissionsPage({
                             {s.problem.title}
                           </span>
                           <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap ml-2">
-                            {new Date(s.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {formatLocalTimeOnly(s.submittedAt)}
                           </span>
                         </div>
                         <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100 ml-2">
@@ -252,7 +270,10 @@ export default async function SubmissionsPage({
 // --- Verdict Component ---
 
 function VerdictBadge({ verdict }: { verdict: SubmissionStatus }) {
-  const config: Record<SubmissionStatus, { style: string; icon: any; label: string }> = {
+  const config: Record<
+    SubmissionStatus,
+    { style: string; icon: any; label: string }
+  > = {
     ACCEPTED: {
       style:
         "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
@@ -276,7 +297,10 @@ function VerdictBadge({ verdict }: { verdict: SubmissionStatus }) {
   return (
     <Badge
       variant="outline"
-      className={cn("gap-1.5 pl-1.5 pr-2.5 py-0.5 font-medium transition-colors", style)}
+      className={cn(
+        "gap-1.5 pl-1.5 pr-2.5 py-0.5 font-medium transition-colors",
+        style
+      )}
     >
       <Icon size={12} className={verdict === "PENDING" ? "animate-spin" : ""} />
       {label}
