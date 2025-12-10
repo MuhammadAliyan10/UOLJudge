@@ -564,21 +564,40 @@ export function GradingInterface({
                     <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
                       Submit Verdict
                     </label>
+
+                    {/* Score Validation Error */}
+                    {!scoreValidation.isValid && (
+                      <Alert className="border-red-300 bg-red-50 py-2">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <AlertDescription className="text-red-800 text-xs font-medium">
+                          Score cannot exceed {submission.problem.points}{" "}
+                          points.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
                     <div className="grid grid-cols-2 gap-3">
                       <Button
                         onClick={() => handleGrade("ACCEPTED")}
-                        disabled={grading}
-                        className="bg-green-600 hover:bg-green-700 text-white font-bold h-12 shadow-sm"
+                        disabled={grading || !scoreValidation.isValid}
+                        className={cn(
+                          "bg-green-600 hover:bg-green-700 text-white font-bold h-12 shadow-sm",
+                          !scoreValidation.isValid &&
+                            "opacity-50 cursor-not-allowed"
+                        )}
                       >
                         <CheckCircle size={16} className="mr-2" />
                         {isGraded ? "UPDATE" : "ACCEPT"}
                       </Button>
                       <Button
                         onClick={() => handleGrade("REJECTED")}
-                        disabled={grading || !comment.trim()}
+                        disabled={
+                          grading || !comment.trim() || !scoreValidation.isValid
+                        }
                         className={cn(
                           "bg-red-600 hover:bg-red-700 text-white font-bold h-12 shadow-sm",
-                          !comment.trim() && "opacity-50 cursor-not-allowed"
+                          (!comment.trim() || !scoreValidation.isValid) &&
+                            "opacity-50 cursor-not-allowed"
                         )}
                       >
                         <XCircle size={16} className="mr-2" />

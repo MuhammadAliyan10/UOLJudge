@@ -21,7 +21,17 @@ import { cn } from "@/lib/utils";
 import { logoutAction } from "@/server/actions/auth/auth";
 import { toast } from "sonner";
 import Image from "next/image";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/features/shared/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/features/shared/ui/alert-dialog";
 import { useState } from "react";
 
 export interface SidebarProps {
@@ -50,6 +60,8 @@ export default function Sidebar({
 
   const handleLogout = async () => {
     await logoutAction();
+    // Force full browser refresh to clear Client Router Cache
+    window.location.href = "/login";
   };
 
   const [openLogout, setOpenLogout] = useState(false);
@@ -70,7 +82,9 @@ export default function Sidebar({
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex h-screen flex-col border-r border-slate-200 bg-white transition-all duration-300 cubic-bezier(0.4, 0, 0.2, 1)",
           isCollapsed ? "w-[72px]" : "w-[260px]",
-          isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
+          isMobileOpen
+            ? "translate-x-0 shadow-2xl"
+            : "-translate-x-full lg:translate-x-0"
         )}
       >
         {/* Header/Logo */}
@@ -109,7 +123,6 @@ export default function Sidebar({
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-6 space-y-0.5 overflow-y-auto custom-scrollbar">
-
           <div className="space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon;
@@ -149,7 +162,6 @@ export default function Sidebar({
               );
             })}
           </div>
-
         </nav>
 
         {/* Footer - Logout */}
@@ -185,7 +197,9 @@ export default function Sidebar({
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="border-slate-200">Cancel</AlertDialogCancel>
+                <AlertDialogCancel className="border-slate-200">
+                  Cancel
+                </AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleLogout}
                   className="bg-red-600 hover:bg-red-700 text-white border-red-700"

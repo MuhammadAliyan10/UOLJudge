@@ -114,6 +114,8 @@ export default function ContestHeader({
 
   const handleLogout = async () => {
     await logoutAction();
+    // Force full browser refresh to clear Client Router Cache
+    window.location.href = "/login";
   };
 
   return (

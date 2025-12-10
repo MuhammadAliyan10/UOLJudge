@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -125,8 +124,8 @@ export function ProblemsClient({
                   isSolved
                     ? "border-emerald-200 bg-emerald-50/30"
                     : isFailed
-                      ? "border-red-200 bg-red-50/30"
-                      : "border-slate-200 bg-white"
+                    ? "border-red-200 bg-red-50/30"
+                    : "border-slate-200 bg-white"
                 )}
               >
                 <CardHeader className="pb-3 pt-5">
@@ -212,7 +211,7 @@ export function ProblemsClient({
                       asChild
                     >
                       <a
-                        href={`/ api / problems / assets / ${problem.id} `}
+                        href={`/api/problems/assets/${problem.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
