@@ -10,17 +10,15 @@ import { UserRole } from "@prisma/client";
 // TYPES & CONFIGURATION
 // ============================================================
 
-// SECURITY: JWT_SECRET validation moved to lazy getter for Docker build compatibility
-const SECRET_KEY = process.env.JWT_SECRET;
-
-// Lazy key getter - validates at runtime, not at module load (fixes Docker build)
+// Lazy key getter - reads env var at RUNTIME, not module load (Docker compatibility)
 function getSecretKey(): Uint8Array {
-  if (!SECRET_KEY && process.env.NODE_ENV === "production") {
+  const secret = process.env.JWT_SECRET;
+  if (!secret && process.env.NODE_ENV === "production") {
     throw new Error(
       "CRITICAL: JWT_SECRET environment variable is required in production"
     );
   }
-  return new TextEncoder().encode(SECRET_KEY || "dev_key_for_local_only");
+  return new TextEncoder().encode(secret || "dev_key_for_local_only");
 }
 
 export interface SessionPayload {
