@@ -10,14 +10,18 @@ import { UserRole } from "@prisma/client";
 // TYPES & CONFIGURATION
 // ============================================================
 
-// SECURITY: JWT_SECRET is required in production
+// SECURITY: JWT_SECRET validation moved to lazy getter for Docker build compatibility
 const SECRET_KEY = process.env.JWT_SECRET;
-if (!SECRET_KEY && process.env.NODE_ENV === "production") {
-  throw new Error(
-    "CRITICAL: JWT_SECRET environment variable is required in production"
-  );
+
+// Lazy key getter - validates at runtime, not at module load (fixes Docker build)
+function getSecretKey(): Uint8Array {
+  if (!SECRET_KEY && process.env.NODE_ENV === "production") {
+    throw new Error(
+      "CRITICAL: JWT_SECRET environment variable is required in production"
+    );
+  }
+  return new TextEncoder().encode(SECRET_KEY || "dev_key_for_local_only");
 }
-const key = new TextEncoder().encode(SECRET_KEY || "dev_key_for_local_only");
 
 export interface SessionPayload {
   userId: string;
@@ -48,7 +52,7 @@ export async function encrypt(payload: SessionPayload): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("24h") // Default: 24 hours
-    .sign(key);
+    .sign(getSecretKey());
 }
 
 /**
@@ -56,7 +60,7 @@ export async function encrypt(payload: SessionPayload): Promise<string> {
  */
 export async function decrypt(token: string): Promise<SessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, key, {
+    const { payload } = await jwtVerify(token, getSecretKey(), {
       algorithms: ["HS256"],
     });
     return payload as SessionPayload;
