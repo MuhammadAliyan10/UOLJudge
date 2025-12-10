@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { History, CheckCircle2, XCircle, Search } from "lucide-react";
+import {
+  History,
+  CheckCircle2,
+  XCircle,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { SubmissionStatus } from "@prisma/client";
 import {
   Table,
@@ -57,6 +64,8 @@ export function HistoryClient({
   const [statusFilter, setStatusFilter] = useState<"all" | SubmissionStatus>(
     "all"
   );
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 15;
 
   // Filter submissions
   const filteredSubmissions = initialGradedSubmissions.filter((submission) => {
@@ -74,6 +83,13 @@ export function HistoryClient({
 
     return matchesSearch && matchesStatus;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredSubmissions.length / ITEMS_PER_PAGE);
+  const paginatedSubmissions = filteredSubmissions.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   return (
     <div className="p-6 lg:p-10 space-y-8">
@@ -98,15 +114,19 @@ export function HistoryClient({
             <Input
               placeholder="Search by team, problem, or contest..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               className="pl-10 bg-white border-slate-200"
             />
           </div>
           <select
             value={statusFilter}
-            onChange={(e) =>
-              setStatusFilter(e.target.value as "all" | SubmissionStatus)
-            }
+            onChange={(e) => {
+              setStatusFilter(e.target.value as "all" | SubmissionStatus);
+              setCurrentPage(1);
+            }}
             className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg outline-none cursor-pointer"
           >
             <option value="all">All Status</option>
@@ -165,7 +185,7 @@ export function HistoryClient({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredSubmissions.map((submission) => (
+                  {paginatedSubmissions.map((submission) => (
                     <TableRow
                       key={submission.id}
                       className="border-slate-50 hover:bg-slate-50/80 transition-all"
@@ -236,6 +256,55 @@ export function HistoryClient({
             )}
           </CardContent>
         </Card>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between bg-white px-4 py-3 border border-slate-200 rounded-lg shadow-sm">
+            <p className="text-sm text-slate-500">
+              Showing{" "}
+              <span className="font-medium text-slate-900">
+                {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+              </span>{" "}
+              to{" "}
+              <span className="font-medium text-slate-900">
+                {Math.min(
+                  currentPage * ITEMS_PER_PAGE,
+                  filteredSubmissions.length
+                )}
+              </span>{" "}
+              of{" "}
+              <span className="font-medium text-slate-900">
+                {filteredSubmissions.length}
+              </span>{" "}
+              results
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="h-8"
+              >
+                <ChevronLeft size={14} />
+              </Button>
+              <span className="text-sm font-medium text-slate-700 px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="h-8"
+              >
+                <ChevronRight size={14} />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

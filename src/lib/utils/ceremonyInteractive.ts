@@ -4,25 +4,25 @@
  */
 
 interface TeamRank {
-    rank: number;
-    teamName: string;
-    solvedCount: number;
-    totalScore: number;
-    totalPenalty: number;
+  rank: number;
+  teamName: string;
+  solvedCount: number;
+  totalScore: number;
+  totalPenalty: number;
 }
 
 interface CeremonyData {
-    contestName: string;
-    contestDate: string;
-    top3: TeamRank[];
-    honorableMentions: TeamRank[];
+  contestName: string;
+  contestDate: string;
+  top3: TeamRank[];
+  honorableMentions: TeamRank[];
 }
 
 export function generateInteractiveCeremony(data: CeremonyData): string {
-    const { contestName, contestDate, top3, honorableMentions } = data;
-    const allTeams = [...top3, ...honorableMentions];
+  const { contestName, contestDate, top3, honorableMentions } = data;
+  const allTeams = [...top3, ...honorableMentions];
 
-    return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -333,19 +333,23 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    ${allTeams.map((team, index) => {
-        // Hide top 3 from table - they appear on podium only
-        const isTop3 = team.rank <= 3;
-        return `
+                    ${allTeams
+                      .map((team, index) => {
+                        // Hide top 3 from table - they appear on podium only
+                        const isTop3 = team.rank <= 3;
+                        return `
                     <tr data-rank="${team.rank}"
-                        style="animation-delay: ${index * 0.1}s${isTop3 ? '; display: none;' : ''}"
-                        class="${isTop3 ? 'podium-team hidden' : ''}">
+                        style="animation-delay: ${index * 0.1}s${
+                          isTop3 ? "; display: none;" : ""
+                        }"
+                        class="${isTop3 ? "podium-team hidden" : ""}">
                         <td class="rank">#${team.rank}</td>
                         <td class="name">${team.teamName}</td>
                         <td class="score">${team.totalScore} pts</td>
                     </tr>
                     `;
-    }).join('')}
+                      })
+                      .join("")}
                 </tbody>
             </table>
 
@@ -355,24 +359,30 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
                 <div class="podium-column third" id="place-3">
                     <div class="medal">🥉</div>
                     <div class="podium-rank">3rd Place</div>
-                    <div class="podium-name">${top3[2]?.teamName || 'N/A'}</div>
-                    <div class="podium-score">${top3[2]?.totalScore || 0} pts</div>
+                    <div class="podium-name">${top3[2]?.teamName || "N/A"}</div>
+                    <div class="podium-score">${
+                      top3[2]?.totalScore || 0
+                    } pts</div>
                 </div>
 
                 <!-- 2nd Place -->
                 <div class="podium-column second" id="place-2">
                     <div class="medal">🥈</div>
                     <div class="podium-rank">2nd Place</div>
-                    <div class="podium-name">${top3[1]?.teamName || 'N/A'}</div>
-                    <div class="podium-score">${top3[1]?.totalScore || 0} pts</div>
+                    <div class="podium-name">${top3[1]?.teamName || "N/A"}</div>
+                    <div class="podium-score">${
+                      top3[1]?.totalScore || 0
+                    } pts</div>
                 </div>
 
                 <!-- 1st Place -->
                 <div class="podium-column first" id="place-1">
                     <div class="medal">🥇</div>
                     <div class="podium-rank">Champion</div>
-                    <div class="podium-name">${top3[0]?.teamName || 'N/A'}</div>
-                    <div class="podium-score">${top3[0]?.totalScore || 0} pts</div>
+                    <div class="podium-name">${top3[0]?.teamName || "N/A"}</div>
+                    <div class="podium-score">${
+                      top3[0]?.totalScore || 0
+                    } pts</div>
                 </div>
             </div>
         </div>
@@ -505,8 +515,9 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
                 if (row1) row1.classList.add('hiding');
 
                 // Dim background for dramatic effect
-                document.body.style.transition = 'background 0.5s ease';
-                document.body.style.background = 'rgba(240, 240, 240, 0.3)';
+                document.body.style.transition = 'background 0.8s ease';
+                document.body.style.background = '#1a1a2e';
+                document.body.style.color = '#ffffff';
 
                 setTimeout(() => {
                     const first = document.getElementById('place-1');

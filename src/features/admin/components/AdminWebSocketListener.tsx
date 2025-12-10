@@ -9,35 +9,34 @@ import { useDebouncedRefresh } from "@/hooks/useDebouncedRefresh";
  * Uses debounced refresh to prevent hydration errors and server thrashing
  */
 export function AdminWebSocketListener() {
-    const refresh = useDebouncedRefresh(300);
+  const refresh = useDebouncedRefresh(300);
 
-    useContestSocket({
-        // Team status changes (blocking/unblocking)
-        onTeamStatusUpdate: () => {
-            console.log("[AdminWebSocketListener] Team status updated - refreshing...");
-            refresh();
-        },
-        // New submissions
-        onNewSubmission: () => {
-            refresh();
-        },
-        // Submission grading updates
-        onSubmissionUpdate: () => {
-            refresh();
-        },
-        // Leaderboard changes
-        onLeaderboardUpdate: () => {
-            refresh();
-        },
-        // Contest status changes (pause/resume)
-        onStatusUpdate: () => {
-            refresh();
-        },
-        // Jury queue updates
-        onJuryQueueUpdate: () => {
-            refresh();
-        },
-    });
+  useContestSocket({
+    // Team status changes (blocking/unblocking)
+    onTeamStatusUpdate: () => {
+      refresh();
+    },
+    // New submissions
+    onNewSubmission: () => {
+      refresh();
+    },
+    // Submission grading updates
+    onSubmissionUpdate: () => {
+      refresh();
+    },
+    // Leaderboard changes
+    onLeaderboardUpdate: () => {
+      refresh();
+    },
+    // Contest status changes (pause/resume)
+    onStatusUpdate: () => {
+      refresh();
+    },
+    // Jury queue updates
+    onJuryQueueUpdate: () => {
+      refresh();
+    },
+  });
 
-    return null; // This is a listener-only component
+  return null; // This is a listener-only component
 }

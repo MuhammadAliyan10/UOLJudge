@@ -354,8 +354,6 @@ export async function getSubmissionPreview(submissionId: string): Promise<{
       filePath = path.join(UPLOAD_DIR, filePath);
     }
 
-    console.log(`[getSubmissionPreview] Attempting to read file: ${filePath}`);
-
     try {
       const content = await fs.readFile(filePath, "utf-8");
       return {
@@ -374,9 +372,6 @@ export async function getSubmissionPreview(submissionId: string): Promise<{
       }
 
       // If UTF-8 fails (encoding error), it's likely binary
-      console.log(
-        `[getSubmissionPreview] UTF-8 encoding failed, treating as binary: ${filePath}`
-      );
       return {
         success: true,
         isBinary: true,

@@ -1,183 +1,139 @@
-# UOLJudge — Master Deployment Protocol
+# UOLJudge — Deployment Guide
 
-**Objective:** Deploy the full UOLJudge V4.0 stack in a university lab environment (Docker + Cloudflare Tunnel) with maximum reliability under restrictive networks.
+**Version:** 4.0
+**Last Updated:** December 2024
 
 ---
 
 ## Prerequisites
 
-| Item                                   | Requirement                                                                 |
-|----------------------------------------|-----------------------------------------------------------------------------|
-| **Host Laptop**                        | MacBook M1/M2 **or** Windows i7/Ryzen 7                                     |
-| **Docker RAM Allocation**              | **≥ 6 GB** (critical – check Docker Desktop → Settings → Resources)        |
-| **Software**                           | • Docker Desktop (running)<br>• Node.js v18+<br>• Cloudflared (installed)  |
-| **Network**                            | USB-C Ethernet adapter **strongly recommended**                             |
+| Requirement      | Details                                        |
+| ---------------- | ---------------------------------------------- |
+| **Host Machine** | MacBook M1/M2 or Windows i7/Ryzen 7+           |
+| **Docker RAM**   | ≥ 6 GB (Docker Desktop → Settings → Resources) |
+| **Software**     | Docker Desktop, Node.js v18+                   |
+| **Network**      | USB-C Ethernet adapter recommended             |
 
 ---
 
 ## Phase 1: Environment Setup
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/your-username/uol-judge.git
+# Clone repository
+git clone https://github.com/MuhammadAliyan10/UOLJudge.git
 cd uol-judge
 ```
 
-### Verify/Create .env (root directory)
+### Configure Environment Variables
 
-```bash
-# Database Connection (Prisma)
-# postgres://USER:PASSWORD@HOST:PORT/DB_NAME
-# Ensure port 5435 matches your docker-compose db port mapping
+Create `.env` in the root directory:
+
+```env
+# Database
 DATABASE_URL="postgresql://admin:uol0512@localhost:5435/uol_judge?schema=public"
-# 🛑 THE FIX: Use 'ws://' and 'localhost' for local dev
+
+# WebSocket (change to your server IP in production)
 NEXT_PUBLIC_WS_URL="ws://localhost:3001"
-# Node Environment
+
+# Environment
 NODE_ENV="development"
 NEXT_PUBLIC_ENABLE_WS=true
 ```
-### Verify/Create .dockerIgnore (root directory)
+
+---
+
+## Phase 2: Build & Launch
 
 ```bash
-# CRITICAL: Prevent copying huge/local folders into the image
-node_modules
-.next
-.git
-.vscode
-.env
-.env*.local
-.env*
-!.env.example
-
-# Database & student data – NEVER copy into container
-pg-data
-postgres-data
-uploads
-public/uploads
-docker-data
-data
-
-# Build artifacts & caches
-dist
-build
-.out
-/.next
-/coverage
-/.turbo
-.turbo
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-*.log
-logs
-
-# OS / Editor garbage
-.DS_Store
-*.swp
-*~
-
-
-```
-
-### Phase 2: Clean Slate Build
-Only required when behind university proxy (172.26.x.x network)
-
-```bash
-# Mac / Linux
-export http_proxy=http://172.26.4.51:3128
-export https_proxy=http://172.26.4.51:3128
-
-# Windows PowerShell
-$Env:http_proxy="http://172.26.4.51:3128"
-$Env:https_proxy="http://172.26.4.51:3128"
-```
-
-#### Build from scratch
-
-```bash
-# Remove everything old
+# Clean build (first time or after major changes)
 docker-compose down -v
-
-# Full rebuild (no cache)
 docker-compose build --no-cache
+docker-compose up -d
 ```
 
+Wait ~20 seconds for PostgreSQL to initialize.
 
-## Phase 3: WebSocket “Hot Swap” (Critical Step)
-Cloudflare free tier gives random subdomains → must patch WebSocket URL at deploy time.
+---
 
-**Terminal 1 – Start Socket Tunnel**
+## Phase 3: Database Setup
 
 ```bash
-cloudflared tunnel --protocol http2 --url http://localhost:3001
-```
+# Push schema to database
+docker-compose exec app npx prisma db push
 
-→ Copy the generated URL, e.g. `https://brave-lion-77.trycloudflare.com`
-
-
-#### Update Source Code
-
-1. Open file:
-    src/features/contest/hooks/useContestSocket.ts
-2. Replace the WS_URL constant:
-
-```typescript
-const WS_URL = "wss://brave-lion-77.trycloudflare.com";
-```
-
-3. Save the file
-
-#### Rebuild & Launch Containers
-
-```bash
-docker-compose up -d --build
-```
-
-Wait ~20 seconds for PostgreSQL to be ready.
-
-
-## Phase 4: Launch & Seed Database
-
-1. **Seed Admin Account (First-Time Only)**
-
-```bash
+# Seed admin account
 docker-compose exec app tsx prisma/seed.ts
 ```
 
-Expected output:
-Created Super Admin: admin
+**Default Admin Credentials:**
 
-2. **Expose Main Website (Terminal 2)**
+- Username: `admin`
+- Password: `uol0512`
 
-```bash
-cloudflared tunnel --protocol http2 --url http://localhost:3000
-```
-→ Copy the new URL, e.g. https://fast-panda-99.trycloudflare.com
+---
 
+## Phase 4: Production Configuration
 
-## Phase 5: Admin Login & Monitoring
+Update `docker-compose.yml` with your server IP:
 
-```bash
-# All services
-docker-compose logs -f
-
-# Only Next.js app
-docker-compose logs -f app
+```yaml
+environment:
+  NEXT_PUBLIC_WS_URL: ws://YOUR_SERVER_IP:3001
+  JWT_SECRET: "your-secure-production-secret"
 ```
 
+---
 
-## Master one cp command
+## One-Command Deployment
 
 ```bash
 docker-compose down -v && \
 docker-compose build --no-cache && \
 docker-compose up -d && \
-echo "⏳ Waiting 15s for Database to initialize..." && \
+echo "⏳ Waiting 15s for Database..." && \
 sleep 15 && \
-docker compose exec app npx prisma db push && \
+docker-compose exec app npx prisma db push && \
 docker-compose exec app tsx prisma/seed.ts && \
 echo "✅ SYSTEM READY! Login: admin / uol0512"
 ```
+
+---
+
+## Monitoring
+
+```bash
+# All services
+docker-compose logs -f
+
+# App only
+docker-compose logs -f app
+
+# WebSocket server
+docker-compose logs -f ws-server
+```
+
+---
+
+## Architecture
+
+| Container   | Port | Purpose                    |
+| ----------- | ---- | -------------------------- |
+| `app`       | 3000 | Next.js application        |
+| `ws-server` | 3001 | WebSocket real-time server |
+| `db`        | 5435 | PostgreSQL database        |
+| `backup`    | —    | Automated backup service   |
+
+---
+
+## Troubleshooting
+
+| Issue                    | Solution                                         |
+| ------------------------ | ------------------------------------------------ |
+| WebSocket not connecting | Verify `NEXT_PUBLIC_WS_URL` matches server IP    |
+| Login fails              | Check `JWT_SECRET` is set in production          |
+| Database errors          | Run `docker-compose exec app npx prisma db push` |
+| Container crash          | Check logs: `docker-compose logs -f app`         |
+
+---
+
+**UOLJudge V4.0 — Enterprise-Grade Contest Platform**

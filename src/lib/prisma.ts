@@ -1,9 +1,7 @@
-import { PrismaClient } from '@prisma/client';
-
-const globalForPrisma = globalThis as unknown as {
-    prisma: PrismaClient | undefined;
-};
-
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+/**
+ * CONSOLIDATION: Re-export db as prisma for backward compatibility
+ * This ensures all files use the same single Prisma client instance
+ * regardless of whether they import 'prisma' or 'db'
+ */
+import { db } from "./db";
+export const prisma = db;

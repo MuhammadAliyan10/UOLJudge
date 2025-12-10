@@ -1,19 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { FileCode, Clock, CheckCircle, Hand, Filter, Eye } from "lucide-react";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  FileCode,
+  Clock,
+  CheckCircle,
+  Hand,
+  Filter,
+  Eye,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/features/shared/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/features/shared/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/features/shared/ui/card";
 import { Badge } from "@/features/shared/ui/badge";
 import { Button } from "@/features/shared/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/features/shared/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/features/shared/ui/tabs";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
@@ -21,310 +41,425 @@ import { useDebouncedRefresh } from "@/hooks/useDebouncedRefresh";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "@/features/shared/ui/tooltip";
 
 interface PendingSubmission {
+  id: string;
+  fileUrl: string;
+  fileType: string;
+  submittedAt: Date;
+  team: {
+    display_name: string;
+    lab_location: string | null;
+  };
+  problem: {
     id: string;
-    fileUrl: string;
-    fileType: string;
-    submittedAt: Date;
-    team: {
-        display_name: string;
-        lab_location: string | null;
-    };
-    problem: {
-        id: string;
-        title: string;
-        contestId: string;
-    };
-    contest: {
-        id: string;
-        name: string;
-    };
+    title: string;
+    contestId: string;
+  };
+  contest: {
+    id: string;
+    name: string;
+  };
 }
 
 interface RetryRequest {
+  id: string;
+  reason: string;
+  requestedAt: Date | null;
+  team: {
+    display_name: string;
+    lab_location: string | null;
+  };
+  problem: {
     id: string;
-    reason: string;
-    requestedAt: Date | null;
-    team: {
-        display_name: string;
-        lab_location: string | null;
-    };
-    problem: {
-        id: string;
-        title: string;
-        contestId: string;
-    };
+    title: string;
+    contestId: string;
+  };
 }
 
 interface SubmissionsClientProps {
-    initialPendingSubmissions: PendingSubmission[];
-    initialRetryRequests: RetryRequest[];
+  initialPendingSubmissions: PendingSubmission[];
+  initialRetryRequests: RetryRequest[];
 }
 
 export function SubmissionsClient({
-    initialPendingSubmissions,
-    initialRetryRequests,
+  initialPendingSubmissions,
+  initialRetryRequests,
 }: SubmissionsClientProps) {
-    const router = useRouter();
-    const [filter, setFilter] = useState<"all" | "retry">("all");
-    const [presenceMap, setPresenceMap] = useState<Map<string, string[]>>(new Map());
+  const router = useRouter();
+  const [filter, setFilter] = useState<"all" | "retry">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+  const [presenceMap, setPresenceMap] = useState<Map<string, string[]>>(
+    new Map()
+  );
 
-    // Debounced refresh to prevent server thrashing
-    const refresh = useDebouncedRefresh(500);
+  // Debounced refresh to prevent server thrashing
+  const refresh = useDebouncedRefresh(500);
 
-    const { isConnected } = useContestSocket({
-        onNewSubmission: (payload) => {
-            toast.success(`New submission from ${payload.teamName}!`, {
-                description: "Pending queue updated",
-                duration: 5000,
-            });
-            // Auto-refresh to show new submission
-            refresh();
-        },
-        onJuryQueueUpdate: (payload) => {
-            // Refresh when another jury grades something
-            refresh();
-        },
-        onRetryRequested: (payload) => {
-            toast.info(`${payload.teamName} requested retry`, {
-                description: payload.problemTitle,
-                duration: 6000,
-            });
-            // Auto-refresh to show retry request
-            refresh();
-        },
-        onRetryGranted: (payload) => {
-            toast.success("Retry granted!", {
-                description: "Team can now submit again",
-                duration: 5000,
-            });
-            // Auto-refresh to update retry status
-            refresh();
-        },
-        // 🎯 Presence tracking (no refresh needed - local state only)
-        onPresenceUpdate: (payload) => {
-            console.log('🎯 PRESENCE_UPDATE received:', payload);
-            setPresenceMap((prev) => {
-                const newMap = new Map(prev);
-                if (payload.activeUsers.length > 0) {
-                    newMap.set(payload.submissionId, payload.activeUsers);
-                } else {
-                    newMap.delete(payload.submissionId);
-                }
-                console.log('🎯 Updated presenceMap:', Object.fromEntries(newMap));
-                return newMap;
-            });
-        },
-    });
+  const { isConnected } = useContestSocket({
+    onNewSubmission: (payload) => {
+      toast.success(`New submission from ${payload.teamName}!`, {
+        description: "Pending queue updated",
+        duration: 5000,
+      });
+      // Auto-refresh to show new submission
+      refresh();
+    },
+    onJuryQueueUpdate: (payload) => {
+      // Refresh when another jury grades something
+      refresh();
+    },
+    onRetryRequested: (payload) => {
+      toast.info(`${payload.teamName} requested retry`, {
+        description: payload.problemTitle,
+        duration: 6000,
+      });
+      // Auto-refresh to show retry request
+      refresh();
+    },
+    onRetryGranted: (payload) => {
+      toast.success("Retry granted!", {
+        description: "Team can now submit again",
+        duration: 5000,
+      });
+      // Auto-refresh to update retry status
+      refresh();
+    },
+    // 🎯 Presence tracking (no refresh needed - local state only)
+    onPresenceUpdate: (payload) => {
+      setPresenceMap((prev) => {
+        const newMap = new Map(prev);
+        if (payload.activeUsers.length > 0) {
+          newMap.set(payload.submissionId, payload.activeUsers);
+        } else {
+          newMap.delete(payload.submissionId);
+        }
+        return newMap;
+      });
+    },
+  });
 
-    console.log('📋 SubmissionsClient presenceMap:', Object.fromEntries(presenceMap));
+  // Filter submissions based on retry requests and search
+  const retryRequestIds = new Set(initialRetryRequests.map((r) => r.id));
+  const filteredSubmissions = initialPendingSubmissions.filter((s) => {
+    const matchesFilter = filter === "all" || retryRequestIds.has(s.id);
+    const matchesSearch =
+      searchQuery === "" ||
+      s.team.display_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.problem.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.contest.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
 
-    // Filter submissions based on retry requests
-    const retryRequestIds = new Set(initialRetryRequests.map((r) => r.id));
-    const filteredSubmissions =
-        filter === "retry"
-            ? initialPendingSubmissions.filter((s) => retryRequestIds.has(s.id))
-            : initialPendingSubmissions;
+  // Pagination
+  const totalPages = Math.ceil(filteredSubmissions.length / ITEMS_PER_PAGE);
+  const paginatedSubmissions = filteredSubmissions.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
-    return (
-        <div className="p-6 lg:p-10 space-y-8">
-            <div className="max-w-[1600px] mx-auto space-y-8">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                        <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                            Submissions
-                        </h1>
-                        <p className="text-slate-500 text-sm font-medium">
-                            Review and grade pending submissions for your assigned contests.
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        {/* Filter Toggle */}
-                        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm">
-                            <Filter size={14} className="text-slate-400" />
-                            <select
-                                value={filter}
-                                onChange={(e) => setFilter(e.target.value as "all" | "retry")}
-                                className="text-sm font-medium text-slate-700 bg-transparent border-none outline-none cursor-pointer"
-                            >
-                                <option value="all">All Submissions</option>
-                                <option value="retry">Retry Requests Only</option>
-                            </select>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <div
-                                className={cn(
-                                    "h-2 w-2 rounded-full",
-                                    isConnected ? "bg-green-500" : "bg-slate-300"
-                                )}
-                            />
-                            <span className="text-xs text-slate-500">
-                                {isConnected ? "Live" : "Connecting..."}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Submissions Table */}
-                <Card className="border-slate-200 shadow-sm">
-                    <CardHeader className="border-b border-slate-100 bg-slate-50/50">
-                        <CardTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                            <FileCode size={18} />
-                            {filter === "retry" ? "Retry Requests" : "Pending Submissions"}
-                            <Badge variant="outline" className="ml-2 bg-purple-50 text-purple-700 border-purple-200 font-mono">
-                                {filteredSubmissions.length}
-                            </Badge>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0 overflow-y-auto">
-                        {filteredSubmissions.length === 0 ? (
-                            <div className="text-center py-16">
-                                <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-4" />
-                                <p className="text-slate-400 font-medium">
-                                    {filter === "retry"
-                                        ? "No retry requests at the moment!"
-                                        : "All submissions graded! Queue is empty."}
-                                </p>
-                            </div>
-                        ) : (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="hover:bg-transparent border-slate-100 bg-slate-50/50">
-                                        <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                                            Team
-                                        </TableHead>
-                                        <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                                            Problem
-                                        </TableHead>
-                                        <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                                            Contest
-                                        </TableHead>
-                                        <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                                            Time Elapsed
-                                        </TableHead>
-                                        {filter === "retry" && (
-                                            <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                                                Reason
-                                            </TableHead>
-                                        )}
-                                        <TableHead className="w-[100px] h-10 py-0"></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredSubmissions.map((submission) => {
-                                        const elapsed = Math.floor(
-                                            (Date.now() - new Date(submission.submittedAt).getTime()) / 60000
-                                        );
-                                        const isRetryRequest = retryRequestIds.has(submission.id);
-                                        const retryRequest = initialRetryRequests.find((r) => r.id === submission.id);
-
-                                        return (
-                                            <TableRow
-                                                key={submission.id}
-                                                className={cn(
-                                                    "border-slate-50 hover:bg-slate-50/80 transition-all",
-                                                    isRetryRequest && "bg-orange-50/30 hover:bg-orange-50/50"
-                                                )}
-                                            >
-                                                <TableCell className="py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        {isRetryRequest && (
-                                                            <Hand size={14} className="text-orange-600 flex-shrink-0" />
-                                                        )}
-                                                        <div className="flex flex-col gap-1">
-                                                            <span className="font-bold text-slate-900 text-sm">
-                                                                {submission.team.display_name}
-                                                            </span>
-                                                            {submission.team.lab_location && (
-                                                                <span className="text-xs text-slate-500">
-                                                                    {submission.team.lab_location}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="py-4">
-                                                    <code className="text-sm font-mono text-slate-700">
-                                                        {submission.problem.title}
-                                                    </code>
-                                                </TableCell>
-                                                <TableCell className="py-4">
-                                                    <span className="text-sm text-slate-600">
-                                                        {submission.contest.name}
-                                                    </span>
-                                                </TableCell>
-                                                <TableCell className="py-4">
-                                                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                                                        <Clock size={12} />
-                                                        {elapsed < 60 ? `${elapsed}m` : `${Math.floor(elapsed / 60)}h`} ago
-                                                    </div>
-                                                </TableCell>
-                                                {filter === "retry" && (
-                                                    <TableCell className="py-4 max-w-xs">
-                                                        <p className="text-xs text-slate-600 truncate italic">
-                                                            "{retryRequest?.reason || "No reason"}"
-                                                        </p>
-                                                    </TableCell>
-                                                )}
-                                                <TableCell className="text-right py-4">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        {/* 🎯 Presence Indicator */}
-                                                        {presenceMap.get(submission.id) && presenceMap.get(submission.id)!.length > 0 && (
-                                                            <TooltipProvider delayDuration={0}>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 border border-amber-300 rounded-full animate-pulse cursor-help">
-                                                                            <Eye size={16} className="text-amber-600 animate-blink" />
-                                                                            <span className="text-xs font-bold text-amber-700">
-                                                                                {presenceMap.get(submission.id)!.length}
-                                                                            </span>
-                                                                        </div>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent side="left" className="max-w-xs">
-                                                                        <div className="text-xs space-y-1">
-                                                                            <p className="font-bold text-amber-600">Being graded by:</p>
-                                                                            <ul className="list-disc list-inside space-y-0.5">
-                                                                                {presenceMap.get(submission.id)!.map((name, idx) => (
-                                                                                    <li key={idx} className="font-mono">{name}</li>
-                                                                                ))}
-                                                                            </ul>
-                                                                        </div>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                        )}
-                                                        <Link href={`/jury/grade/${submission.id}`}>
-                                                            <Button
-                                                                size="sm"
-                                                                className={cn(
-                                                                    "h-8 px-4 font-medium",
-                                                                    isRetryRequest
-                                                                        ? "bg-orange-600 hover:bg-orange-700 text-white"
-                                                                        : "bg-purple-600 hover:bg-purple-700 text-white"
-                                                                )}
-                                                            >
-                                                                {isRetryRequest ? "Review" : "Grade"}
-                                                            </Button>
-                                                        </Link>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        )}
-                    </CardContent>
-                </Card>
+  return (
+    <div className="p-6 lg:p-10 space-y-8">
+      <div className="max-w-[1600px] mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+              Submissions
+            </h1>
+            <p className="text-slate-500 text-sm font-medium">
+              Review and grade pending submissions for your assigned contests.
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            {/* Search Input */}
+            <div className="relative">
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                type="text"
+                placeholder="Search team, problem..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg w-48 outline-none focus:border-purple-400 transition-colors"
+              />
             </div>
+            {/* Filter Toggle */}
+            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm">
+              <Filter size={14} className="text-slate-400" />
+              <select
+                value={filter}
+                onChange={(e) => {
+                  setFilter(e.target.value as "all" | "retry");
+                  setCurrentPage(1);
+                }}
+                className="text-sm font-medium text-slate-700 bg-transparent border-none outline-none cursor-pointer"
+              >
+                <option value="all">All Submissions</option>
+                <option value="retry">Retry Requests Only</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div
+                className={cn(
+                  "h-2 w-2 rounded-full",
+                  isConnected ? "bg-green-500" : "bg-slate-300"
+                )}
+              />
+              <span className="text-xs text-slate-500">
+                {isConnected ? "Live" : "Connecting..."}
+              </span>
+            </div>
+          </div>
         </div>
-    );
+
+        {/* Submissions Table */}
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="border-b border-slate-100 bg-slate-50/50">
+            <CardTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <FileCode size={18} />
+              {filter === "retry" ? "Retry Requests" : "Pending Submissions"}
+              <Badge
+                variant="outline"
+                className="ml-2 bg-purple-50 text-purple-700 border-purple-200 font-mono"
+              >
+                {filteredSubmissions.length}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 overflow-y-auto">
+            {filteredSubmissions.length === 0 ? (
+              <div className="text-center py-16">
+                <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-4" />
+                <p className="text-slate-400 font-medium">
+                  {filter === "retry"
+                    ? "No retry requests at the moment!"
+                    : "All submissions graded! Queue is empty."}
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-slate-100 bg-slate-50/50">
+                    <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Team
+                    </TableHead>
+                    <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Problem
+                    </TableHead>
+                    <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Contest
+                    </TableHead>
+                    <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Time Elapsed
+                    </TableHead>
+                    {filter === "retry" && (
+                      <TableHead className="h-10 py-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Reason
+                      </TableHead>
+                    )}
+                    <TableHead className="w-[100px] h-10 py-0"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedSubmissions.map((submission) => {
+                    const elapsed = Math.floor(
+                      (Date.now() -
+                        new Date(submission.submittedAt).getTime()) /
+                        60000
+                    );
+                    const isRetryRequest = retryRequestIds.has(submission.id);
+                    const retryRequest = initialRetryRequests.find(
+                      (r) => r.id === submission.id
+                    );
+
+                    return (
+                      <TableRow
+                        key={submission.id}
+                        className={cn(
+                          "border-slate-50 hover:bg-slate-50/80 transition-all",
+                          isRetryRequest &&
+                            "bg-orange-50/30 hover:bg-orange-50/50"
+                        )}
+                      >
+                        <TableCell className="py-4">
+                          <div className="flex items-center gap-2">
+                            {isRetryRequest && (
+                              <Hand
+                                size={14}
+                                className="text-orange-600 flex-shrink-0"
+                              />
+                            )}
+                            <div className="flex flex-col gap-1">
+                              <span className="font-bold text-slate-900 text-sm">
+                                {submission.team.display_name}
+                              </span>
+                              {submission.team.lab_location && (
+                                <span className="text-xs text-slate-500">
+                                  {submission.team.lab_location}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <code className="text-sm font-mono text-slate-700">
+                            {submission.problem.title}
+                          </code>
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <span className="text-sm text-slate-600">
+                            {submission.contest.name}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                            <Clock size={12} />
+                            {elapsed < 60
+                              ? `${elapsed}m`
+                              : `${Math.floor(elapsed / 60)}h`}{" "}
+                            ago
+                          </div>
+                        </TableCell>
+                        {filter === "retry" && (
+                          <TableCell className="py-4 max-w-xs">
+                            <p className="text-xs text-slate-600 truncate italic">
+                              "{retryRequest?.reason || "No reason"}"
+                            </p>
+                          </TableCell>
+                        )}
+                        <TableCell className="text-right py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            {/* 🎯 Presence Indicator */}
+                            {presenceMap.get(submission.id) &&
+                              presenceMap.get(submission.id)!.length > 0 && (
+                                <TooltipProvider delayDuration={0}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 border border-amber-300 rounded-full animate-pulse cursor-help">
+                                        <Eye
+                                          size={16}
+                                          className="text-amber-600 animate-blink"
+                                        />
+                                        <span className="text-xs font-bold text-amber-700">
+                                          {
+                                            presenceMap.get(submission.id)!
+                                              .length
+                                          }
+                                        </span>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                      side="left"
+                                      className="max-w-xs"
+                                    >
+                                      <div className="text-xs space-y-1">
+                                        <p className="font-bold text-amber-600">
+                                          Being graded by:
+                                        </p>
+                                        <ul className="list-disc list-inside space-y-0.5">
+                                          {presenceMap
+                                            .get(submission.id)!
+                                            .map((name, idx) => (
+                                              <li
+                                                key={idx}
+                                                className="font-mono"
+                                              >
+                                                {name}
+                                              </li>
+                                            ))}
+                                        </ul>
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            <Link href={`/jury/grade/${submission.id}`}>
+                              <Button
+                                size="sm"
+                                className={cn(
+                                  "h-8 px-4 font-medium",
+                                  isRetryRequest
+                                    ? "bg-orange-600 hover:bg-orange-700 text-white"
+                                    : "bg-purple-600 hover:bg-purple-700 text-white"
+                                )}
+                              >
+                                {isRetryRequest ? "Review" : "Grade"}
+                              </Button>
+                            </Link>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between bg-white px-4 py-3 border border-slate-200 rounded-lg shadow-sm">
+            <p className="text-sm text-slate-500">
+              Showing{" "}
+              <span className="font-medium text-slate-900">
+                {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+              </span>{" "}
+              to{" "}
+              <span className="font-medium text-slate-900">
+                {Math.min(
+                  currentPage * ITEMS_PER_PAGE,
+                  filteredSubmissions.length
+                )}
+              </span>{" "}
+              of{" "}
+              <span className="font-medium text-slate-900">
+                {filteredSubmissions.length}
+              </span>{" "}
+              results
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="h-8"
+              >
+                <ChevronLeft size={14} />
+              </Button>
+              <span className="text-sm font-medium text-slate-700 px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="h-8"
+              >
+                <ChevronRight size={14} />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

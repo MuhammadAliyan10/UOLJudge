@@ -1,90 +1,161 @@
-# ⚡ UOLJudge  Industrial Edition
+# UOLJudge
 
-**Mission-Critical, Offline-First Competitive Programming Platform**  
-Engineered for high-availability university environments with hostile or intermittent networks.
+**Enterprise-Grade Programming Contest Platform**
 
----
-
-## 🏆 Overview
-
-UOLJudge is a battle-tested judging system purpose-built for large-scale, on-campus programming contests (up to 3 concurrent contests, 100+ teams).  
-It delivers **zero-latency real-time synchronization** while remaining fully functional behind restrictive proxies, NATs, and even complete internet outages.
+The most reliable, feature-complete judging system for university programming contests. Built for high-availability environments where failure is not an option.
 
 ---
 
-## 🏗️ Architectural Highlights
+## Why UOLJudge?
 
-### 1. The Pulse Engine — Real-Time Core
-- Dedicated Node.js WebSocket server running on **port 3001**
-- Replaces traditional polling entirely
-- **< 100 ms** propagation of admin actions (Ban, Pause, Clarify, Grade) to 50–150+ clients
-- Custom **Ping/Pong heartbeat protocol** engineered to survive aggressive university firewalls and transparent proxies
+### vs. Codeforces / HackerRank
 
-### 2. $Z$-Gate — Zero-Trust Security Layer
-- Complete decoupling of business logic from client-side code
-- **Server-side time authority** — client clock manipulation impossible
-- **Strict Contest Binding** — teams are immutable-locked to a single contest; cross-contest submissions trigger instant transaction rollback
-- All sensitive operations protected by server actions + Prisma transactions
+| Feature               | UOLJudge                 | Online Platforms     |
+| --------------------- | ------------------------ | -------------------- |
+| **Offline Operation** | ✅ 100% offline-capable  | ❌ Requires internet |
+| **Network Latency**   | < 100ms (local)          | 200-500ms+           |
+| **Data Privacy**      | ✅ Your data stays local | ❌ Cloud storage     |
+| **Customization**     | ✅ Full source access    | ❌ Locked platform   |
+| **Cost**              | ✅ Free, self-hosted     | 💰 Subscription fees |
+| **Multi-Category**    | ✅ CORE, WEB, ANDROID    | ❌ Code only         |
 
-### 3. Federated “Island” Deployment Model
-- Single-host deployment (M1/M2 MacBook or Windows i7/Ryzen 7 laptop)
-- Serves 100+ concurrent clients via **Cloudflare Tunnel** or direct LAN
-- **100 % offline-first** — no external fonts, CDNs, analytics, or third-party APIs
-- One-command launch: `docker-compose up -d`
-- Automatic fallback to pure LAN mode when internet is unavailable
+### vs. DOMjudge / PC²
 
----
-
-## 🛠️ Tech Stack
-
-| Layer            | Technology                                           |
-|------------------|------------------------------------------------------|
-| Frontend         | Next.js 14 (App Router), Tailwind CSS, shadcn/ui     |
-| Backend          | Next.js Server Actions + Custom Node.js WS Server   |
-| Real-Time        | Standalone Pulse Engine (ws + heartbeat)             |
-| Database         | PostgreSQL 15 (Alpine) + Prisma ORM                  |
-| Infrastructure   | Docker Compose (multi-container)                     |
-| Tunneling        | Cloudflared (zero-config secure tunnel)              |
-| Monitoring       | λ-Gauge Dashboard (real-time CPU / RAM / WS metrics) |
+| Feature               | UOLJudge             | Traditional Systems    |
+| --------------------- | -------------------- | ---------------------- |
+| **Real-Time Updates** | ✅ WebSocket-powered | ❌ Polling/refresh     |
+| **Modern UI**         | ✅ Premium shadcn/ui | ❌ Legacy interfaces   |
+| **Setup Time**        | 5 minutes (Docker)   | Hours of configuration |
+| **Mobile Support**    | ✅ Responsive design | ❌ Desktop only        |
+| **Live Leaderboard**  | ✅ Instant updates   | ❌ Manual refresh      |
 
 ---
 
-## 🚀 Repository Structure
-/src              → Feature modules (Admin, Contest, Jury, Team)
-/server           → Pulse Engine (ws-server.ts)
-/prisma           → Schema, migrations, seed scripts
-/docker           → Dockerfiles + docker-compose.yml
-/scripts          → Chaos testing, backup utilities
-/public/ceremony  → Black Box static award generator
+## Key Features
 
+### 🎯 Zero-Trust Security
+
+- **Role-based access control** — Admin, Jury, Participant isolation
+- **Device limit enforcement** — Max 2 devices per team
+- **Server-side time authority** — Clock manipulation impossible
+- **Path traversal protection** — Secure file downloads
+
+### ⚡ Real-Time Everything
+
+- **WebSocket-powered** — < 100ms update propagation
+- **Live leaderboard** — Animated score changes
+- **Instant notifications** — Announcements, bans, grades
+- **Presence indicators** — See who's grading what
+
+### 🏆 ICPC-Standard Scoring
+
+- **3-tier ranking** — Problems Solved → Score → Time Penalty
+- **O(1) leaderboard reads** — Atomic accumulator pattern
+- **Leaderboard freeze** — Hide final hour rankings
+- **Penalty system** — 20-minute wrong answer penalties
+
+### 📱 Multi-Category Support
+
+- **CORE** — Traditional programming (C++, Python, Java)
+- **WEB** — Frontend/fullstack projects (ZIP upload)
+- **ANDROID** — Mobile apps (APK/ZIP upload)
+
+### 🎬 Award Ceremony Generator
+
+- **One-click export** — Interactive HTML ceremony
+- **Keyboard-controlled** — Professional presentation
+- **Fireworks animation** — Dramatic champion reveal
+- **Offline playback** — Works without server
 
 ---
 
-## 👉 Getting Started
+## Architecture
 
-Full deployment and operations instructions (including proxy workarounds, LAN fallback, and troubleshooting) are available in:
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Docker Compose                        │
+├─────────────┬─────────────┬─────────────┬───────────────┤
+│   Next.js   │  WebSocket  │ PostgreSQL  │    Backup     │
+│    :3000    │    :3001    │    :5435    │   Service     │
+├─────────────┴─────────────┴─────────────┴───────────────┤
+│                    uol-network                           │
+└─────────────────────────────────────────────────────────┘
+```
 
-[DEPLOYMENT.md](DEPLOYMENT.md) — **Mandatory reading for contest hosts**
+| Component      | Technology                      |
+| -------------- | ------------------------------- |
+| Frontend       | Next.js 14, React 18, shadcn/ui |
+| Backend        | Server Actions, Prisma ORM      |
+| Real-Time      | Custom WebSocket Server         |
+| Database       | PostgreSQL 15 (Alpine)          |
+| Infrastructure | Docker Compose                  |
 
 ---
 
-## 🛡️ Disaster Recovery & Ceremony Features
+## Quick Start
 
-- **Black Box Ceremony Generator**  
-  One-click export of a completely **static, self-contained HTML award ceremony**  
-  Includes final rankings, animations, confetti, and sound — works 100 % offline even if the server is dead
+```bash
+# Clone
+git clone https://github.com/MuhammadAliyan10/UOLJudge.git
+cd uol-judge
 
-- Manual grading override via Admin panel (bypass broken Jury UI)
+# Deploy
+docker-compose up -d
 
-- Persistent PostgreSQL volume (`pg-data`) — survives container restarts and host reboots
+# Initialize
+docker-compose exec app npx prisma db push
+docker-compose exec app tsx prisma/seed.ts
+
+# Access
+open http://localhost:3000
+```
+
+**Default Login:** `admin` / `uol0512`
 
 ---
 
-## ✍️ Author & Maintainer
+## Performance
 
-**Muhammad Aliyan**  
-Lead Architect & Systems Engineer  
-University of Lahore – Speed Programming Contest Platform
+| Metric             | Value            |
+| ------------------ | ---------------- |
+| Concurrent Teams   | 100+             |
+| WebSocket Latency  | < 100ms          |
+| Leaderboard Update | O(1)             |
+| DB Connection Pool | 200 max          |
+| Auto-Backup        | Every 10 minutes |
+
+---
+
+## Security Features
+
+- ✅ JWT authentication with production validation
+- ✅ bcrypt password hashing
+- ✅ Zero-trust role isolation
+- ✅ Device session management
+- ✅ Path traversal protection
+- ✅ Contest registration locking
+- ✅ Cascade delete prevention
+
+---
+
+## Documentation
+
+- [Deployment Guide](DEPLOYMENT.md) — Production setup instructions
+- [Prisma Schema](prisma/schema.prisma) — Database models
+
+---
+
+## Author
+
+**Muhammad Aliyan**
+Lead Architect & Systems Engineer
+University of Lahore
+
+---
+
+## License
+
+MIT License — Free for educational and commercial use.
 
 ---
 

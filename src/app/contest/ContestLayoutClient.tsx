@@ -52,12 +52,16 @@ export function ContestLayoutClient({
   const router = useRouter();
 
   // State
-  const [contestStatus, setContestStatus] = useState<"PRE_START" | "ACTIVE" | "ENDED">("ACTIVE");
+  const [contestStatus, setContestStatus] = useState<
+    "PRE_START" | "ACTIVE" | "ENDED"
+  >("ACTIVE");
   const [isBlocked, setIsBlocked] = useState(initialBlocked); // NEW: State for blocked status
   const [isPaused, setIsPaused] = useState(initialPaused);
   const [isFrozen, setIsFrozen] = useState(initialFrozen);
   const [endTime, setEndTime] = useState<Date | undefined>(initialEndTime);
-  const [startTime, setStartTime] = useState<Date | undefined>(initialStartTime);
+  const [startTime, setStartTime] = useState<Date | undefined>(
+    initialStartTime
+  );
 
   // Announcement modal state
   const [announcementOpen, setAnnouncementOpen] = useState(false);
@@ -89,7 +93,6 @@ export function ContestLayoutClient({
   useContestSocket({
     onStatusUpdate: (payload) => {
       if (payload.contestId === contestId) {
-        console.log("🔄 Contest Status Update:", payload);
         if (payload.isPaused !== undefined) setIsPaused(payload.isPaused);
         if (payload.isFrozen !== undefined) setIsFrozen(payload.isFrozen);
         if (payload.endTime) setEndTime(new Date(payload.endTime));
@@ -104,14 +107,12 @@ export function ContestLayoutClient({
       }
     },
     onContestUpdate: (payload) => {
-      console.log("🔄 Contest Update:", payload);
       if (payload.contestId === contestId || !contestId) {
         router.refresh();
       }
     },
     onTeamStatusUpdate: (payload) => {
       if (payload.teamId === teamId) {
-        console.log("🚫 Team Blocked Status Update:", payload);
         setIsBlocked(payload.isBlocked);
         if (payload.isBlocked) {
           router.refresh(); // Force server re-check to be safe
@@ -119,14 +120,12 @@ export function ContestLayoutClient({
       }
     },
     onAnnouncement: (payload) => {
-      console.log("📢 Admin Announcement Received:", payload);
       if (payload.message) {
         setAnnouncementMessage(payload.message);
         setAnnouncementOpen(true);
       }
     },
-    onConnect: () => console.log("✅ Connected to Contest Socket"),
-    onDisconnect: () => console.log("❌ Disconnected from Contest Socket"),
+    // Connection callbacks intentionally silent in production
   });
 
   return (
@@ -148,7 +147,10 @@ export function ContestLayoutClient({
       {isFrozen && contestStatus === "ACTIVE" && (
         <div className="bg-blue-600 text-white px-4 py-2 text-center text-sm font-bold flex items-center justify-center gap-2 animate-in slide-in-from-top-full">
           <AlertTriangle size={16} className="text-blue-200" />
-          <span>❄️ The scoreboard is FROZEN! Submissions are still accepted but ranks are hidden.</span>
+          <span>
+            ❄️ The scoreboard is FROZEN! Submissions are still accepted but
+            ranks are hidden.
+          </span>
         </div>
       )}
 
@@ -156,7 +158,10 @@ export function ContestLayoutClient({
       {isPaused && (
         <div className="bg-amber-500 text-white px-4 py-2 text-center text-sm font-bold flex items-center justify-center gap-2 animate-in slide-in-from-top-full">
           <AlertTriangle size={16} className="text-amber-100" />
-          <span>⚠️ The contest is currently PAUSED. Submissions are temporarily disabled.</span>
+          <span>
+            ⚠️ The contest is currently PAUSED. Submissions are temporarily
+            disabled.
+          </span>
         </div>
       )}
 

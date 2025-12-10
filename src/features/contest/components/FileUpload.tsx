@@ -31,9 +31,7 @@ const secondaryVariant = {
 // File type configurations per category
 const ACCEPTED_FILES: Record<Category, Record<string, string[]>> = {
   CORE: {
-    "application/zip": [".zip"],
-    "application/x-zip-compressed": [".zip"],
-    "application/octet-stream": [".zip"], // Fallback for browsers that don't recognize zip MIME type
+    // CORE only accepts programming language source files (no .zip)
     "text/x-python": [".py"],
     "text/x-c++src": [".cpp", ".c++", ".cc"],
     "text/x-csrc": [".c"],

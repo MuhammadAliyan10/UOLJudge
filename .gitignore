@@ -11,7 +11,6 @@
 # Next.js
 /.next/
 /out/
-next-env.d.ts
 
 # Production builds
 /build
@@ -32,6 +31,9 @@ next-env.d.ts
 # Uploads & user-generated content (CRITICAL - contains student code/files)
 /uploads/
 /public/uploads/
+
+# Backups (contain database dumps)
+/backups/
 
 # Testing & Coverage
 /coverage
@@ -100,13 +102,5 @@ temp/
 .vscode-test/
 
 # Docker
-.docker/
-Dockerfile*
+Dockerfile
 .dockerignore
-
-# Optional: if you use Playwright or Cypress
-/test-results/
-/playwright-report/
-/playwright/.cache/
-/cypress/videos/
-/cypress/screenshots/

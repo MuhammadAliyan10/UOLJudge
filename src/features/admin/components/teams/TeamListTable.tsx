@@ -7,45 +7,49 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 interface TeamListTableProps {
-    data: Team[];
+  data: Team[];
 }
 
 export function TeamListTable({ data }: TeamListTableProps) {
-    const router = useRouter();
+  const router = useRouter();
 
-    const handleDeleteSelected = async (selectedIds: string[], resetSelection?: () => void) => {
-        try {
-            toast.loading(`Deleting ${selectedIds.length} teams...`);
+  const handleDeleteSelected = async (
+    selectedIds: string[],
+    resetSelection?: () => void
+  ) => {
+    try {
+      toast.loading(`Deleting ${selectedIds.length} teams...`);
 
-            const result = await bulkDeleteTeamsAction(selectedIds);
+      const result = await bulkDeleteTeamsAction(selectedIds);
 
-            if (result.success) {
-                toast.dismiss();
-                toast.success(`Successfully deleted ${selectedIds.length} teams`);
+      if (result.success) {
+        toast.dismiss();
+        toast.success(`Successfully deleted ${selectedIds.length} teams`);
 
-                // Clear table selection if reset function provided
-                if (resetSelection) {
-                    resetSelection();
-                }
-
-                // Refresh data
-                router.refresh();
-            } else {
-                toast.dismiss();
-                toast.error(result.error || "Failed to delete teams");
-            }
-        } catch (err: any) {
-            toast.dismiss();
-            toast.error(err.message || "An unexpected error occurred");
+        // Clear table selection if reset function provided
+        if (resetSelection) {
+          resetSelection();
         }
-    };
 
-    return (
-        <DataTable
-            columns={columns}
-            data={data}
-            filterColumn="display_name"
-            onDeleteSelected={handleDeleteSelected}
-        />
-    );
+        // Refresh data
+        router.refresh();
+      } else {
+        toast.dismiss();
+        toast.error(result.error || "Failed to delete teams");
+      }
+    } catch (err: any) {
+      toast.dismiss();
+      toast.error(err.message || "An unexpected error occurred");
+    }
+  };
+
+  return (
+    <DataTable
+      columns={columns}
+      data={data}
+      filterColumn="display_name"
+      onDeleteSelected={handleDeleteSelected}
+      getRowId={(team) => team.user.id}
+    />
+  );
 }
