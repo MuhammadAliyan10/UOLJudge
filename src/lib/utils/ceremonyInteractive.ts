@@ -1,6 +1,10 @@
 /**
- * Interactive Ceremony Generator - Simplified Version
- * White background, clean table, keyboard-only navigation
+ * Interactive Ceremony Generator - Professional Version
+ * Features:
+ * - Empty placeholder rows for positions 1-3 initially
+ * - 3rd and 2nd reveals update table only
+ * - 1st place shows full overlay with university congrats text
+ * - Light theme with blur effect for champion reveal
  */
 
 interface TeamRank {
@@ -20,7 +24,13 @@ interface CeremonyData {
 
 export function generateInteractiveCeremony(data: CeremonyData): string {
   const { contestName, contestDate, top3, honorableMentions } = data;
-  const allTeams = [...top3, ...honorableMentions];
+
+  // Create placeholder rows with empty data for positions 1-3
+  const placeholderRows = [1, 2, 3].map((rank) => ({
+    rank,
+    teamName: "???",
+    totalScore: "???",
+  }));
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -38,26 +48,33 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #ffffff;
-            color: #1a202c;
-            padding: 2rem;
-            overflow: hidden;
+            color: #1e293b;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
         .container {
             max-width: 1400px;
             margin: 0 auto;
+            padding: 2rem;
+            transition: filter 0.8s ease, opacity 0.8s ease;
+        }
+
+        .container.blurred {
+            filter: blur(12px);
+            opacity: 0.3;
         }
 
         /* Header */
         .header {
             text-align: center;
-            margin-bottom: 3rem;
+            margin-bottom: 2rem;
         }
 
         .header h1 {
             font-size: 2.5rem;
             font-weight: 800;
-            color: #1a202c;
+            color: #1e293b;
             margin-bottom: 0.5rem;
         }
 
@@ -82,91 +99,84 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
             display: block;
         }
 
-        /* Main Content - Table and Podium Container */
-        .content {
-            position: relative;
-            min-height: 70vh;
-        }
-
-        /* Hide table when podium is active */
-        .podium-container.active ~ .results-table {
-            opacity: 0;
-            pointer-events: none;
-        }
-
         /* Table Styles */
         .results-table {
             width: 100%;
             border-collapse: collapse;
             background: white;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
         }
 
         .results-table thead {
             background: #f8fafc;
-            border-bottom: 2px solid #e2e8f0;
         }
 
         .results-table th {
-            padding: 1rem;
+            padding: 1rem 1.5rem;
             text-align: left;
             font-weight: 700;
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             color: #475569;
-            border: 1px solid #e2e8f0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #e2e8f0;
         }
 
         .results-table th:first-child {
-            width: 120px;
+            width: 100px;
             text-align: center;
         }
 
         .results-table th:last-child {
             width: 150px;
-            text-align: center;
+            text-align: right;
         }
 
         .results-table tbody tr {
             border-bottom: 1px solid #e2e8f0;
-            transition: all 0.3s ease;
+            background: white;
+            transition: all 0.5s ease;
         }
 
-        /* Zebra Striping */
-        .results-table tbody tr:nth-child(even) {
-            background-color: #f8fafc;
+        /* Placeholder rows - positions 1-3 */
+        .results-table tbody tr.placeholder-row {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
         }
 
-        /* Gold/Silver/Bronze highlights for Top 3 */
-        .results-table tbody tr[data-rank="1"] {
-            background: linear-gradient(135deg, #fff9db 0%, #fff4c4 100%);
-            border-left: 4px solid #FFD700;
+        .results-table tbody tr.placeholder-row td {
+            color: #94a3b8;
+            font-style: italic;
         }
 
-        .results-table tbody tr[data-rank="2"] {
-            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
-            border-left: 4px solid #C0C0C0;
+        /* Gold/Silver/Bronze highlights for Top 3 when revealed */
+        .results-table tbody tr[data-rank="1"]:not(.placeholder-row) {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-left: 4px solid #fbbf24;
         }
 
-        .results-table tbody tr[data-rank="3"] {
-            background: linear-gradient(135deg, #ffe9d6 0%, #ffd9b8 100%);
-            border-left: 4px solid #CD7F32;
+        .results-table tbody tr[data-rank="2"]:not(.placeholder-row) {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            border-left: 4px solid #9ca3af;
         }
 
-        .results-table tbody tr.hiding {
-            opacity: 0;
-            transform: translateX(-50px);
+        .results-table tbody tr[data-rank="3"]:not(.placeholder-row) {
+            background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+            border-left: 4px solid #ea580c;
         }
 
         .results-table td {
-            padding: 1rem;
-            border: 1px solid #e2e8f0;
+            padding: 1rem 1.5rem;
+            color: #1e293b;
         }
 
         .results-table td.rank {
             text-align: center;
             font-weight: 700;
-            font-size: 1.2rem;
-            color: #64748b;
+            font-size: 1.1rem;
+            color: #475569;
         }
 
         .results-table td.name {
@@ -176,115 +186,134 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
         }
 
         .results-table td.score {
-            text-align: center;
+            text-align: right;
             font-weight: 800;
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             color: #059669;
         }
 
-        /* Row Animation - Slide In */
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .results-table tbody tr {
-            animation: slideIn 0.5s ease forwards;
-            opacity: 0;
-        }
-
-        /* Podium Container */
-        .podium-container {
+        /* Winner Reveal Overlay */
+        .winner-overlay {
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            top: 0;
+            left: 0;
             width: 100%;
-            max-width: 1200px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 2rem;
-            height: auto;
-            padding: 2rem;
+            height: 100%;
+            z-index: 600;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.5s ease;
-            z-index: 100;
+            transition: opacity 0.8s ease;
         }
 
-        .podium-container.active {
+        .winner-overlay.active {
             opacity: 1;
             pointer-events: auto;
         }
 
-        /* Podium Columns */
-        .podium-column {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        /* Top Left Text */
+        .congrats-text {
+            position: absolute;
+            top: 8vh;
+            left: 5vw;
+            max-width: 40vw;
             opacity: 0;
-            transform: translateY(50px);
+            transform: translateX(-50px);
+            transition: all 0.8s ease 0.2s;
         }
 
-        .podium-column.show {
-            animation: podiumReveal 0.8s ease forwards;
+        .winner-overlay.active .congrats-text {
+            opacity: 1;
+            transform: translateX(0);
         }
 
-        @keyframes podiumReveal {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .medal {
-            font-size: 5rem;
-            margin-bottom: 1rem;
-            animation: bounce 1s ease infinite;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
-        }
-
-        .podium-rank {
+        .congrats-text .university {
             font-size: 1.2rem;
+            font-weight: 600;
             color: #64748b;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
+            letter-spacing: 2px;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            line-height: 1.6;
         }
 
-        .podium-name {
-            font-size: 2.5rem;
+        .congrats-text .congratulates {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #1e293b;
+            margin-top: 0.5rem;
+        }
+
+        /* Bottom Right Text */
+        .winner-label {
+            position: absolute;
+            bottom: 8vh;
+            right: 5vw;
+            opacity: 0;
+            transform: translateX(50px);
+            transition: all 0.8s ease 0.4s;
+        }
+
+        .winner-overlay.active .winner-label {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .winner-label span {
+            font-size: 5rem;
             font-weight: 900;
-            color: #1a202c;
-            margin-bottom: 1rem;
+            color: #fbbf24;
+            text-shadow: 0 4px 20px rgba(251, 191, 36, 0.4);
+            letter-spacing: 8px;
+        }
+
+        /* Champion Center */
+        .champion-spotlight {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, 100%);
             text-align: center;
-            max-width: 350px;
+            opacity: 0;
+            transition: all 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s;
+        }
+
+        .winner-overlay.active .champion-spotlight {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+        }
+
+        .champion-spotlight .medal {
+            font-size: 10rem;
+            margin-bottom: 0.5rem;
+            animation: championBounce 1s ease infinite;
+        }
+
+        @keyframes championBounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-15px) scale(1.05); }
+        }
+
+        .champion-spotlight .rank-label {
+            font-size: 1.5rem;
+            color: #b45309;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            margin-bottom: 0.5rem;
+        }
+
+        .champion-spotlight .team-name {
+            font-size: 4rem;
+            font-weight: 900;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
             line-height: 1.2;
         }
 
-        .podium-score {
-            font-size: 3.5rem;
+        .champion-spotlight .score {
+            font-size: 3rem;
             font-weight: 900;
             color: #059669;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
-        /* Podium Order */
-        .podium-column.second { order: 1; }
-        .podium-column.first { order: 2; }
-        .podium-column.third { order: 3; }
 
         /* Hint Text */
         .hint {
@@ -292,18 +321,19 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
             bottom: 2rem;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
+            background: #1e293b;
             color: white;
             padding: 0.75rem 2rem;
             border-radius: 50px;
             font-size: 0.95rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            font-weight: 600;
         }
 
         .hint kbd {
             background: white;
-            color: black;
+            color: #1e293b;
             padding: 0.25rem 0.5rem;
             border-radius: 4px;
             font-weight: 700;
@@ -314,93 +344,90 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
 <body>
     <canvas id="fireworks-canvas"></canvas>
 
-    <div class="container">
+    <div class="container" id="main-container">
         <!-- Header -->
         <div class="header">
             <h1>${contestName}</h1>
-            <div class="date">Award Ceremony • ${contestDate}</div>
+            <div class="date">Award Ceremony &#8226; ${contestDate}</div>
         </div>
 
-        <!-- Main Content Area -->
-        <div class="content">
-            <!-- Results Table -->
-            <table class="results-table" id="results-table">
-                <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>Team Name</th>
-                        <th>Score</th>
-                    </tr>
-                </thead>
-                <tbody id="table-body">
-                    ${allTeams
-                      .map((team, index) => {
-                        // Hide top 3 from table - they appear on podium only
-                        const isTop3 = team.rank <= 3;
-                        return `
-                    <tr data-rank="${team.rank}"
-                        style="animation-delay: ${index * 0.1}s${
-                          isTop3 ? "; display: none;" : ""
-                        }"
-                        class="${isTop3 ? "podium-team hidden" : ""}">
-                        <td class="rank">#${team.rank}</td>
-                        <td class="name">${team.teamName}</td>
-                        <td class="score">${team.totalScore} pts</td>
-                    </tr>
-                    `;
-                      })
-                      .join("")}
-                </tbody>
-            </table>
+        <!-- Results Table -->
+        <table class="results-table" id="results-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Team Name</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                ${placeholderRows
+                  .map(
+                    (row) => `
+                <tr data-rank="${row.rank}" class="placeholder-row" id="placeholder-${row.rank}">
+                    <td class="rank">#${row.rank}</td>
+                    <td class="name">${row.teamName}</td>
+                    <td class="score">${row.totalScore}</td>
+                </tr>
+                `
+                  )
+                  .join("")}
+                ${honorableMentions
+                  .map(
+                    (team) => `
+                <tr data-rank="${team.rank}">
+                    <td class="rank">#${team.rank}</td>
+                    <td class="name">${team.teamName}</td>
+                    <td class="score">${team.totalScore} pts</td>
+                </tr>
+                `
+                  )
+                  .join("")}
+            </tbody>
+        </table>
+    </div>
 
-            <!-- Podium (Hidden Initially) -->
-            <div class="podium-container" id="podium">
-                <!-- 3rd Place -->
-                <div class="podium-column third" id="place-3">
-                    <div class="medal">🥉</div>
-                    <div class="podium-rank">3rd Place</div>
-                    <div class="podium-name">${top3[2]?.teamName || "N/A"}</div>
-                    <div class="podium-score">${
-                      top3[2]?.totalScore || 0
-                    } pts</div>
-                </div>
-
-                <!-- 2nd Place -->
-                <div class="podium-column second" id="place-2">
-                    <div class="medal">🥈</div>
-                    <div class="podium-rank">2nd Place</div>
-                    <div class="podium-name">${top3[1]?.teamName || "N/A"}</div>
-                    <div class="podium-score">${
-                      top3[1]?.totalScore || 0
-                    } pts</div>
-                </div>
-
-                <!-- 1st Place -->
-                <div class="podium-column first" id="place-1">
-                    <div class="medal">🥇</div>
-                    <div class="podium-rank">Champion</div>
-                    <div class="podium-name">${top3[0]?.teamName || "N/A"}</div>
-                    <div class="podium-score">${
-                      top3[0]?.totalScore || 0
-                    } pts</div>
-                </div>
+    <!-- Winner Reveal Overlay -->
+    <div class="winner-overlay" id="winner-overlay">
+        <!-- Top Left - University Text -->
+        <div class="congrats-text">
+            <div class="university">
+                The University of Lahore<br>
+                Sargodha Campus
             </div>
+            <div class="congratulates">Congratulates The</div>
         </div>
 
-        <!-- Hint -->
-        <div class="hint" id="hint">
-            Press <kbd>→</kbd> or <kbd>Space</kbd> to continue
+        <!-- Center - Champion -->
+        <div class="champion-spotlight" id="champion">
+            <div class="medal">&#127941;</div>
+            <div class="rank-label">Champion</div>
+            <div class="team-name">${top3[0]?.teamName || "N/A"}</div>
+            <div class="score">${top3[0]?.totalScore || 0} pts</div>
+        </div>
+
+        <!-- Bottom Right - Winner Label -->
+        <div class="winner-label">
+            <span>WINNER</span>
         </div>
     </div>
 
+    <!-- Hint -->
+    <div class="hint" id="hint">
+        Press <kbd>&#8594;</kbd> or <kbd>Space</kbd> to reveal 3rd place
+    </div>
+
     <script>
+        // Team data for reveals
+        const top3 = ${JSON.stringify(top3)};
+
         // State Management
         let stage = 0;
         const maxStage = 3;
 
         // Elements
-        const table = document.getElementById('results-table');
-        const podium = document.getElementById('podium');
+        const mainContainer = document.getElementById('main-container');
+        const winnerOverlay = document.getElementById('winner-overlay');
         const hint = document.getElementById('hint');
         const canvas = document.getElementById('fireworks-canvas');
         const ctx = canvas.getContext('2d');
@@ -421,8 +448,8 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
                 this.color = color;
                 this.radius = Math.random() * 3 + 2;
                 this.velocity = {
-                    x: (Math.random() - 0.5) * 10,
-                    y: (Math.random() - 0.5) * 10
+                    x: (Math.random() - 0.5) * 12,
+                    y: (Math.random() - 0.5) * 12
                 };
                 this.alpha = 1;
                 this.decay = Math.random() * 0.02 + 0.01;
@@ -447,12 +474,11 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
         }
 
         let particles = [];
-        const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F59E0B'];
+        const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F59E0B', '#EF4444', '#8B5CF6'];
 
         function createFirework(x, y) {
-            const particleCount = 60;
+            const particleCount = 80;
             const color = colors[Math.floor(Math.random() * colors.length)];
-
             for (let i = 0; i < particleCount; i++) {
                 particles.push(new Particle(x, y, color));
             }
@@ -473,13 +499,26 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
                 return particle.alpha > 0;
             });
 
-            if (Math.random() < 0.06) {
+            if (Math.random() < 0.08) {
                 const x = Math.random() * canvas.width;
-                const y = Math.random() * (canvas.height * 0.5);
+                const y = Math.random() * (canvas.height * 0.6);
                 createFirework(x, y);
             }
 
             requestAnimationFrame(animateFireworks);
+        }
+
+        // Replace placeholder with actual data
+        function revealPosition(rank) {
+            const placeholder = document.getElementById('placeholder-' + rank);
+            if (!placeholder) return;
+
+            const team = top3.find(t => t.rank === rank);
+            if (!team) return;
+
+            placeholder.classList.remove('placeholder-row');
+            placeholder.querySelector('.name').textContent = team.teamName;
+            placeholder.querySelector('.score').textContent = team.totalScore + ' pts';
         }
 
         function nextStage() {
@@ -487,61 +526,27 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
             stage++;
 
             if (stage === 1) {
-                // Reveal 3rd place
-                setTimeout(() => {
-                    const row3 = document.querySelector('tr[data-rank="3"]');
-                    if (row3) row3.classList.add('hiding');
-                }, 300);
-
-                setTimeout(() => {
-                    podium.classList.add('active');
-                    document.getElementById('place-3').classList.add('show');
-                    hint.innerHTML = 'Press <kbd>→</kbd> or <kbd>Space</kbd> to reveal 2nd place';
-                }, 800);
+                // Reveal 3rd place - TABLE ONLY
+                revealPosition(3);
+                hint.innerHTML = 'Press <kbd>&#8594;</kbd> or <kbd>Space</kbd> to reveal 2nd place';
 
             } else if (stage === 2) {
-                // Reveal 2nd place
-                const row2 = document.querySelector('tr[data-rank="2"]');
-                if (row2) row2.classList.add('hiding');
-
-                setTimeout(() => {
-                    document.getElementById('place-2').classList.add('show');
-                    hint.innerHTML = 'Press <kbd>→</kbd> or <kbd>Space</kbd> to reveal Champion!';
-                }, 500);
+                // Reveal 2nd place - TABLE ONLY
+                revealPosition(2);
+                hint.innerHTML = 'Press <kbd>&#8594;</kbd> or <kbd>Space</kbd> to reveal the Champion!';
 
             } else if (stage === 3) {
-                // Reveal 1st place + Fireworks with DRAMATIC animation
-                const row1 = document.querySelector('tr[data-rank="1"]');
-                if (row1) row1.classList.add('hiding');
+                // CHAMPION REVEAL - Full overlay with text
+                mainContainer.classList.add('blurred');
+                winnerOverlay.classList.add('active');
+                hint.innerHTML = '&#127881; Congratulations to all winners! &#127881;';
 
-                // Dim background for dramatic effect
-                document.body.style.transition = 'background 0.8s ease';
-                document.body.style.background = '#1a1a2e';
-                document.body.style.color = '#ffffff';
-
+                // Start fireworks after reveal
                 setTimeout(() => {
-                    const first = document.getElementById('place-1');
-                    // Start from bottom-center, scaled down and transparent
-                    first.style.transform = 'translateY(200px) scale(0.5)';
-                    first.style.opacity = '0';
-                    first.classList.add('show');
-
-                    // Animate to final position with bounce
-                    setTimeout(() => {
-                        first.style.transition = 'all 1.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                        first.style.transform = 'translateY(0) scale(1)';
-                        first.style.opacity = '1';
-                    }, 100);
-
-                    hint.innerHTML = '🎉 Congratulations to all winners! 🎉';
-
-                    // Delay fireworks to let animation complete
-                    setTimeout(() => {
-                        canvas.classList.add('active');
-                        fireworksActive = true;
-                        animateFireworks();
-                    }, 1500); // Wait for animation to finish
-                }, 500);
+                    canvas.classList.add('active');
+                    fireworksActive = true;
+                    animateFireworks();
+                }, 1200);
             }
         }
 
@@ -552,22 +557,22 @@ export function generateInteractiveCeremony(data: CeremonyData): string {
             if (stage === 3) {
                 fireworksActive = false;
                 canvas.classList.remove('active');
+                mainContainer.classList.remove('blurred');
+                winnerOverlay.classList.remove('active');
             }
 
             stage--;
 
-            // Implement reverse logic if needed
-            // For simplicity, just update hint
             if (stage === 0) {
-                hint.innerHTML = 'Press <kbd>→</kbd> or <kbd>Space</kbd> to continue';
+                hint.innerHTML = 'Press <kbd>&#8594;</kbd> or <kbd>Space</kbd> to reveal 3rd place';
             } else if (stage === 1) {
-                hint.innerHTML = 'Press <kbd>→</kbd> or <kbd>Space</kbd> to reveal 2nd place';
+                hint.innerHTML = 'Press <kbd>&#8594;</kbd> or <kbd>Space</kbd> to reveal 2nd place';
             } else if (stage === 2) {
-                hint.innerHTML = 'Press <kbd>→</kbd> or <kbd>Space</kbd> to reveal Champion!';
+                hint.innerHTML = 'Press <kbd>&#8594;</kbd> or <kbd>Space</kbd> to reveal the Champion!';
             }
         }
 
-        // Keyboard Controls (No Visible Buttons)
+        // Keyboard Controls
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
                 e.preventDefault();

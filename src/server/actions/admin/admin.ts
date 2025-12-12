@@ -120,9 +120,9 @@ export async function createTeamAction(formData: FormData) {
     });
 
     // Broadcast real-time update via WebSocket
-    await broadcastToWebSocket('CONTEST_UPDATE', {
-      action: 'team_create',
-      contestId: data.contestId
+    await broadcastToWebSocket("CONTEST_UPDATE", {
+      action: "team_create",
+      contestId: data.contestId,
     });
 
     revalidatePath("/admin/teams");
@@ -156,7 +156,9 @@ export async function updateTeamAction(formData: FormData) {
 
   // Parse maxDevices (new field)
   const maxDevicesRaw = formData.get("maxDevices");
-  const maxDevices = maxDevicesRaw ? parseInt(maxDevicesRaw as string) : undefined;
+  const maxDevices = maxDevicesRaw
+    ? parseInt(maxDevicesRaw as string)
+    : undefined;
 
   try {
     // Fetch contest to derive category
@@ -180,7 +182,7 @@ export async function updateTeamAction(formData: FormData) {
       select: {
         assigned_contest_id: true,
         max_devices: true,
-        authorized_devices: true
+        authorized_devices: true,
       },
     });
 
@@ -199,8 +201,6 @@ export async function updateTeamAction(formData: FormData) {
         },
       },
     };
-
-
 
     // Handle maxDevices update with quota reduction check
     if (maxDevices !== undefined) {
@@ -247,10 +247,10 @@ export async function updateTeamAction(formData: FormData) {
     });
 
     // Broadcast real-time update via WebSocket
-    await broadcastToWebSocket('CONTEST_UPDATE', {
-      action: 'team_update',
+    await broadcastToWebSocket("CONTEST_UPDATE", {
+      action: "team_update",
       contestId: data.contestId,
-      teamId: data.id
+      teamId: data.id,
     });
 
     revalidatePath("/admin/teams");
@@ -304,9 +304,9 @@ export async function bulkDeleteTeamsAction(teamIds: string[]) {
     });
 
     // Broadcast real-time update via WebSocket
-    await broadcastToWebSocket('CONTEST_UPDATE', {
-      action: 'bulk_team_delete',
-      teamIds
+    await broadcastToWebSocket("CONTEST_UPDATE", {
+      action: "bulk_team_delete",
+      teamIds,
     });
 
     revalidatePath("/admin/teams");
@@ -340,7 +340,7 @@ export async function createContestAction(formData: FormData) {
   const data = result.data;
 
   try {
-    let createdContestId = '';
+    let createdContestId = "";
 
     await db.$transaction(async (tx) => {
       const contest = await tx.contest.create({
@@ -369,9 +369,9 @@ export async function createContestAction(formData: FormData) {
     });
 
     // Broadcast real-time update via WebSocket
-    await broadcastToWebSocket('CONTEST_UPDATE', {
-      action: 'create',
-      contestId: createdContestId
+    await broadcastToWebSocket("CONTEST_UPDATE", {
+      action: "create",
+      contestId: createdContestId,
     });
 
     revalidatePath("/admin/contests");
@@ -381,7 +381,9 @@ export async function createContestAction(formData: FormData) {
   }
 }
 
-export async function updateContestAction(input: FormData | { id: string;[key: string]: any }) {
+export async function updateContestAction(
+  input: FormData | { id: string; [key: string]: any }
+) {
   const session = await getSession();
   if (session?.role !== "ADMIN")
     return { success: false, error: "Unauthorized" };
@@ -421,8 +423,10 @@ export async function updateContestAction(input: FormData | { id: string;[key: s
     const updateData: any = {};
 
     if (updates.name !== undefined) updateData.name = updates.name;
-    if (updates.startTime !== undefined) updateData.startTime = new Date(updates.startTime);
-    if (updates.endTime !== undefined) updateData.endTime = new Date(updates.endTime);
+    if (updates.startTime !== undefined)
+      updateData.startTime = new Date(updates.startTime);
+    if (updates.endTime !== undefined)
+      updateData.endTime = new Date(updates.endTime);
     if (updates.isActive !== undefined) updateData.isActive = updates.isActive;
 
     await db.contest.update({
@@ -430,16 +434,19 @@ export async function updateContestAction(input: FormData | { id: string;[key: s
       data: updateData,
     });
 
-    // Broadcast real-time update via WebSocket
-    await broadcastToWebSocket('CONTEST_UPDATE', {
-      action: 'update',
-      contestId
+    // Broadcast real-time update via WebSocket (use CONTEST_STATUS_UPDATE for leaderboard compatibility)
+    await broadcastToWebSocket("CONTEST_STATUS_UPDATE", {
+      action: "update",
+      contestId,
+      endTime: updateData.endTime
+        ? updateData.endTime.toISOString()
+        : undefined,
     });
 
     revalidatePath("/admin/contests");
     return { success: true };
   } catch (e) {
-    console.error('[updateContestAction] Error:', e);
+    console.error("[updateContestAction] Error:", e);
     return { success: false, error: "Failed to update contest" };
   }
 }
@@ -478,19 +485,20 @@ export async function deleteContestAction(contestId: string) {
     if (teamCount > 0 && !hasEnded) {
       return {
         success: false,
-        error: "Cannot delete contest with registered teams unless it has ended. Please wait until the contest ends for archival cleanup.",
+        error:
+          "Cannot delete contest with registered teams unless it has ended. Please wait until the contest ends for archival cleanup.",
       };
     }
 
     // Check if currently running (extra safety)
-    const isRunning = contest.isActive &&
-      now >= contest.startTime &&
-      now <= contest.endTime;
+    const isRunning =
+      contest.isActive && now >= contest.startTime && now <= contest.endTime;
 
     if (isRunning) {
       return {
         success: false,
-        error: "Cannot delete a running contest. Please wait until it ends or deactivate it first."
+        error:
+          "Cannot delete a running contest. Please wait until it ends or deactivate it first.",
       };
     }
 
@@ -586,10 +594,11 @@ export async function extendContestTime(
       },
     });
 
-    // Broadcast real-time update via WebSocket
-    await broadcastToWebSocket('CONTEST_UPDATE', {
-      action: 'time_extended',
-      contestId
+    // Broadcast real-time update via WebSocket (use CONTEST_STATUS_UPDATE for leaderboard compatibility)
+    await broadcastToWebSocket("CONTEST_STATUS_UPDATE", {
+      action: "time_extended",
+      contestId,
+      endTime: newEndTime.toISOString(),
     });
 
     // Revalidate the Contests list and the specific Leaderboard page
@@ -631,15 +640,15 @@ export async function toggleContestFreezeAction(
     await db.contest.update({
       where: { id: contestId },
       data: {
-        frozenAt: isCurrentlyFrozen ? null : new Date() // UTC timestamp
+        frozenAt: isCurrentlyFrozen ? null : new Date(), // UTC timestamp
       },
     });
 
     // Broadcast real-time update via WebSocket
-    await broadcastToWebSocket('CONTEST_UPDATE', {
-      action: 'freeze_toggle',
+    await broadcastToWebSocket("CONTEST_UPDATE", {
+      action: "freeze_toggle",
       contestId,
-      frozen: !isCurrentlyFrozen
+      frozen: !isCurrentlyFrozen,
     });
 
     revalidatePath("/admin/contests");
@@ -660,7 +669,9 @@ export async function toggleContestFreezeAction(
  * Get ALL contests for team assignment (no isActive filter)
  * This is different from jury's getAllContestsForAssignment which only returns active contests
  */
-export async function getAllContestsForTeamAssignment(): Promise<Array<{ id: string; name: string }>> {
+export async function getAllContestsForTeamAssignment(): Promise<
+  Array<{ id: string; name: string }>
+> {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") {
     return [];
@@ -678,7 +689,10 @@ export async function getAllContestsForTeamAssignment(): Promise<Array<{ id: str
 
     return contests;
   } catch (error) {
-    console.error("[getAllContestsForTeamAssignment] Error fetching contests:", error);
+    console.error(
+      "[getAllContestsForTeamAssignment] Error fetching contests:",
+      error
+    );
     return [];
   }
 }

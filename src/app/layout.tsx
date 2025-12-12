@@ -2,16 +2,7 @@ import type { Metadata } from "next";
 
 import "./globals.css";
 import { Toaster } from "sonner";
-import { cn } from "@/lib/utils";
 import NextTopLoader from "nextjs-toploader";
-
-// 1. Font Configuration
-// Using system fonts to avoid network dependency during Docker build
-// const inter = Inter({
-//   subsets: ["latin"],
-//   variable: "--font-inter",
-//   display: "swap",
-// });
 
 // 2. Metadata (SEO & Tab Title)
 export const metadata: Metadata = {
@@ -47,10 +38,8 @@ export default async function RootLayout({
           easing="ease"
           shadow="0 0 10px #4F39F6,0 0 5px #4F39F6"
         />
-
-        <Toaster position="top-right" />
-        {children}
         <Toaster position="top-right" theme="light" richColors closeButton />
+        {children}
       </body>
     </html>
   );
