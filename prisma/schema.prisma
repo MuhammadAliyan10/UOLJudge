@@ -250,6 +250,11 @@ model Submission {
   judgedBy   User?   @relation("JudgedBy", fields: [judgedById], references: [id])
 
   juryComment String? @map("jury_comment") @db.Text
+
+  // PERFORMANCE FIX (Audit S4): Add indexes for hot path queries
+  @@index([userId, problemId]) // ρ-Constraint check (every submission)
+  @@index([status])            // Jury pending queue filtering
+  @@index([submittedAt])       // Jury queue sorting by time
 }
 
 model Clarification {

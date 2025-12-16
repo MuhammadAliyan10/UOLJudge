@@ -1,9 +1,12 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
+  prisma: PrismaClient | undefined;
+};
 
-export const db = globalForPrisma.prisma ?? new PrismaClient()
+export const db = globalForPrisma.prisma ?? new PrismaClient();
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+// CRITICAL FIX (Audit Issue #1): Always cache in global to prevent connection pool exhaustion
+// In production with 100+ concurrent users, each serverless invocation would create a new
+// PrismaClient, exhausting the 50-connection pool limit. Caching ensures single instance.
+globalForPrisma.prisma = db;

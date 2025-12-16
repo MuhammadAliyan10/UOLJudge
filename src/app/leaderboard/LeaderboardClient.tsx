@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Category } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
+import { useDebouncedRefresh } from "@/hooks/useDebouncedRefresh";
 import {
   WifiOff,
   Cpu,
@@ -86,6 +87,11 @@ export function LeaderboardClient({
 }: LeaderboardClientProps) {
   const router = useRouter();
 
+  // FIX (Audit Issue #6): Use debounced refresh to prevent server thrashing
+  // When 100+ clients receive simultaneous WebSocket events, this prevents
+  // 100+ router.refresh() calls from overwhelming the server
+  const refresh = useDebouncedRefresh(2000);
+
   // State for teams data - initialize with server data
   const [teams, setTeams] = useState<Team[]>(initialTeams);
 
@@ -106,12 +112,12 @@ export function LeaderboardClient({
   // Real-time updates via WebSocket - update state directly
   useContestSocket({
     onLeaderboardUpdate: (payload) => {
-      // Refresh from server to get updated data
-      router.refresh();
+      // FIX: Debounced refresh instead of direct router.refresh()
+      refresh();
     },
     onSubmissionUpdate: () => {
-      // Refresh from server to get updated scores
-      router.refresh();
+      // FIX: Debounced refresh instead of direct router.refresh()
+      refresh();
     },
     onStatusUpdate: (payload) => {
       // Fix: When contest ends, force countdown to zero
@@ -131,7 +137,7 @@ export function LeaderboardClient({
           });
         }
       }
-      router.refresh();
+      refresh();
     },
   });
 

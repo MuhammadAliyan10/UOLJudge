@@ -1,5 +1,5 @@
 import { useRouter } from "next/navigation";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 /**
  * Debounced Router Refresh Hook
@@ -8,7 +8,7 @@ import { useCallback, useRef } from "react";
  * router.refresh() calls. Multiple rapid calls within the debounce window
  * will only trigger a single refresh after the cooldown period.
  *
- * @param debounceMs - Debounce delay in milliseconds (default: 500ms)
+ * @param debounceMs - Debounce delay in milliseconds (default: 2000ms)
  * @returns refresh function that triggers debounced router.refresh()
  *
  * @example
@@ -22,6 +22,16 @@ export function useDebouncedRefresh(debounceMs: number = 2000) {
   const router = useRouter();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastRefreshRef = useRef<number>(0);
+
+  // CLEANUP FIX: Clear pending timeout on unmount to prevent memory leaks
+  // and React warnings about state updates on unmounted components
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const refresh = useCallback(() => {
     // Clear any pending refresh

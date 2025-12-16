@@ -1,139 +1,276 @@
 # UOLJudge — Deployment Guide
 
-**Version:** 4.0
-**Last Updated:** December 2024
+**Version:** 5.0
+**Last Updated:** December 12, 2025
 
 ---
 
 ## Prerequisites
 
-| Requirement      | Details                                        |
-| ---------------- | ---------------------------------------------- |
-| **Host Machine** | MacBook M1/M2 or Windows i7/Ryzen 7+           |
-| **Docker RAM**   | ≥ 6 GB (Docker Desktop → Settings → Resources) |
-| **Software**     | Docker Desktop, Node.js v18+                   |
-| **Network**      | USB-C Ethernet adapter recommended             |
+| Requirement  | Details                                   |
+| ------------ | ----------------------------------------- |
+| **Server**   | Azure Standard_D4s_v3 (4 vCPU, 16GB RAM)  |
+| **Docker**   | Docker Engine 24+ with Compose V2         |
+| **Software** | Git, Node.js v18+ (for local development) |
+| **Network**  | Public IP with ports 3000, 3001 open      |
 
 ---
 
-## Phase 1: Environment Setup
+## Phase 1: Initial Server Setup
+
+### 1.1 SSH into Azure Server
 
 ```bash
-# Clone repository
+ssh <your-username>@<your-server-ip>
+```
+
+### 1.2 Install Docker (if not installed)
+
+```bash
+# Update packages
+sudo apt update && sudo apt upgrade -y
+
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# Add user to docker group
+sudo usermod -aG docker $USER
+
+# Logout and login again, then verify
+docker --version
+docker compose version
+```
+
+### 1.3 Clone Repository
+
+```bash
 git clone https://github.com/MuhammadAliyan10/UOLJudge.git
-cd uol-judge
-```
-
-### Configure Environment Variables
-
-Create `.env` in the root directory:
-
-```env
-# Database
-DATABASE_URL="postgresql://admin:uol0512@localhost:5435/uol_judge?schema=public"
-
-# WebSocket (change to your server IP in production)
-NEXT_PUBLIC_WS_URL="ws://localhost:3001"
-
-# Environment
-NODE_ENV="development"
-NEXT_PUBLIC_ENABLE_WS=true
+cd UOLJudge
 ```
 
 ---
 
-## Phase 2: Build & Launch
+## Phase 2: Clean Deployment (Fresh Start)
+
+> ⚠️ **WARNING**: This will delete ALL existing data including teams, submissions, and contest history.
+
+### 2.1 Stop All Running Containers
 
 ```bash
-# Clean build (first time or after major changes)
-docker-compose down -v
-docker-compose build --no-cache
-docker-compose up -d
+docker compose down
 ```
 
-Wait ~20 seconds for PostgreSQL to initialize.
-
----
-
-## Phase 3: Database Setup
+### 2.2 Remove All Docker Artifacts
 
 ```bash
-# Push schema to database
-docker-compose exec app npx prisma db push
-
-# Seed admin account
-docker-compose exec app tsx prisma/seed.ts
+# Remove containers, images, volumes, and networks
+docker system prune -a --volumes -f
 ```
 
-**Default Admin Credentials:**
+### 2.3 Delete PostgreSQL Data
 
-- Username: `admin`
-- Password: `uol0512`
+```bash
+# Remove the persistent database data folder
+sudo rm -rf ./pg-data
+```
+
+### 2.4 Pull Latest Code
+
+```bash
+git pull origin main
+```
+
+### 2.5 Build Fresh Docker Images
+
+```bash
+npx prisma migrate dev --name add_submission_indexes
+docker compose build --no-cache
+```
+
+### 2.6 Start All Services
+
+```bash
+docker compose up -d
+```
+
+### 2.7 Wait for Database Initialization
+
+```bash
+# Wait 15-20 seconds for PostgreSQL to be ready
+sleep 15
+```
+
+### 2.8 Run Database Migrations
+
+```bash
+docker compose exec app npx prisma migrate deploy
+```
+
+### 2.9 Seed Initial Data
+
+```bash
+docker compose exec app npx prisma db seed
+```
+
+### 2.10 Verify Deployment
+
+```bash
+# Check all containers are running
+docker compose ps
+
+# View application logs
+docker compose logs -f app
+```
 
 ---
 
-## Phase 4: Production Configuration
+## Phase 3: Quick One-Command Deployment
 
-Update `docker-compose.yml` with your server IP:
+For experienced users, run everything in one command:
+
+```bash
+cd /path/to/UOLJudge && \
+docker compose down && \
+docker system prune -a --volumes -f && \
+sudo rm -rf ./pg-data && \
+git pull origin main && \
+docker compose build --no-cache && \
+docker compose up -d && \
+echo "⏳ Waiting 20s for Database..." && \
+sleep 20 && \
+docker compose exec app npx prisma migrate deploy && \
+docker compose exec app npx prisma db seed && \
+echo "✅ DEPLOYMENT COMPLETE!"
+```
+
+---
+
+## Phase 4: Configuration
+
+### 4.1 Environment Variables
+
+Update `docker-compose.yml` with your server configuration:
 
 ```yaml
 environment:
+  # Database connection
+  DATABASE_URL: "postgresql://admin:uol0512@db:5432/uol_judge?connection_limit=50"
+
+  # Session encryption (CHANGE THIS!)
+  JWT_SECRET: "your-secure-production-secret-minimum-32-chars"
+
+  # WebSocket URL (your server's public IP)
   NEXT_PUBLIC_WS_URL: ws://YOUR_SERVER_IP:3001
-  JWT_SECRET: "your-secure-production-secret"
+
+  # Internal Docker networking
+  INTERNAL_WS_URL: http://ws-server:3001
+
+  # Required for HTTP deployments (no SSL)
+  FORCE_INSECURE_COOKIES: "true"
+
+  # File storage location
+  UPLOAD_DIR: "/app/storage"
+```
+
+### 4.2 Default Admin Credentials
+
+| Username | Password  |
+| -------- | --------- |
+| `admin`  | `uol0512` |
+
+> 🔐 **IMPORTANT**: Change the admin password after first login!
+
+---
+
+## Phase 5: Monitoring & Logs
+
+### View All Logs
+
+```bash
+docker compose logs -f
+```
+
+### View Specific Service Logs
+
+```bash
+# Application logs
+docker compose logs -f app
+
+# WebSocket server logs
+docker compose logs -f ws-server
+
+# Database logs
+docker compose logs -f db
+```
+
+### Check Container Status
+
+```bash
+docker compose ps
+```
+
+### Monitor Resource Usage
+
+```bash
+docker stats
 ```
 
 ---
 
-## One-Command Deployment
+## Phase 6: Backup & Restore
+
+### Create Database Backup
 
 ```bash
-docker-compose down -v && \
-docker-compose build --no-cache && \
-docker-compose up -d && \
-echo "⏳ Waiting 15s for Database..." && \
-sleep 15 && \
-docker-compose exec app npx prisma db push && \
-docker-compose exec app tsx prisma/seed.ts && \
-echo "✅ SYSTEM READY! Login: admin / uol0512"
+docker compose exec db pg_dump -U admin uol_judge > backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
----
-
-## Monitoring
+### Restore Database Backup
 
 ```bash
-# All services
-docker-compose logs -f
-
-# App only
-docker-compose logs -f app
-
-# WebSocket server
-docker-compose logs -f ws-server
+cat backup_YYYYMMDD_HHMMSS.sql | docker compose exec -T db psql -U admin uol_judge
 ```
 
 ---
 
 ## Architecture
 
-| Container   | Port | Purpose                    |
-| ----------- | ---- | -------------------------- |
-| `app`       | 3000 | Next.js application        |
-| `ws-server` | 3001 | WebSocket real-time server |
-| `db`        | 5435 | PostgreSQL database        |
-| `backup`    | —    | Automated backup service   |
+| Container   | Port | Purpose                    | Resources      |
+| ----------- | ---- | -------------------------- | -------------- |
+| `app`       | 3000 | Next.js application        | 2.5 CPU, 2GB   |
+| `ws-server` | 3001 | WebSocket real-time server | 0.5 CPU, 256MB |
+| `db`        | 5432 | PostgreSQL database        | 1.0 CPU, 1GB   |
+| `backup`    | —    | Automated backup service   | 0.25 CPU, 64MB |
 
 ---
 
 ## Troubleshooting
 
-| Issue                    | Solution                                         |
-| ------------------------ | ------------------------------------------------ |
-| WebSocket not connecting | Verify `NEXT_PUBLIC_WS_URL` matches server IP    |
-| Login fails              | Check `JWT_SECRET` is set in production          |
-| Database errors          | Run `docker-compose exec app npx prisma db push` |
-| Container crash          | Check logs: `docker-compose logs -f app`         |
+| Issue                     | Solution                                                     |
+| ------------------------- | ------------------------------------------------------------ |
+| Container won't start     | Check logs: `docker compose logs -f app`                     |
+| WebSocket not connecting  | Verify `NEXT_PUBLIC_WS_URL` matches server public IP         |
+| Login fails               | Ensure `JWT_SECRET` is set and `FORCE_INSECURE_COOKIES=true` |
+| Database connection error | Wait 20s after startup, then retry                           |
+| File upload fails         | Check `UPLOAD_DIR` is mounted and writable                   |
+| Leaderboard not updating  | Verify WebSocket connection in browser console               |
 
 ---
 
-**UOLJudge V4.0 — Enterprise-Grade Contest Platform**
+## Update Deployment (Without Data Loss)
+
+For updates that preserve existing data:
+
+```bash
+cd /path/to/UOLJudge && \
+git pull origin main && \
+docker compose build --no-cache && \
+docker compose up -d && \
+docker compose exec app npx prisma migrate deploy && \
+echo "✅ UPDATE COMPLETE!"
+```
+
+---
+
+**UOLJudge V5.0 — Enterprise-Grade Competitive Programming Platform**

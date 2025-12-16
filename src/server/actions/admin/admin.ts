@@ -267,12 +267,19 @@ export async function deleteTeamAction(teamId: string) {
 
   try {
     // Transactionally delete all associated data first to avoid FK constraints
+    // FIX (Audit Issue #4): Added ContestRegistration, TeamScore, and Clarification cleanup
     await db.$transaction(async (tx) => {
       // 1. Clean submissions (required because submissions FK User and Problem)
       await tx.submission.deleteMany({ where: { userId: teamId } });
-      // 2. Delete team profile (FK to User)
+      // 2. Clean contest registrations
+      await tx.contestRegistration.deleteMany({ where: { user_id: teamId } });
+      // 3. Clean team scores
+      await tx.teamScore.deleteMany({ where: { team: { user_id: teamId } } });
+      // 4. Clean clarifications
+      await tx.clarification.deleteMany({ where: { user_id: teamId } });
+      // 5. Delete team profile (FK to User)
       await tx.teamProfile.delete({ where: { user_id: teamId } });
-      // 3. Delete user account (Login)
+      // 6. Delete user account (Login)
       await tx.user.delete({ where: { id: teamId } });
     });
 
@@ -294,12 +301,25 @@ export async function bulkDeleteTeamsAction(teamIds: string[]) {
     return { success: false, error: "Unauthorized" };
 
   try {
+    // FIX (Audit Issue #4): Added ContestRegistration, TeamScore, and Clarification cleanup
     await db.$transaction(async (tx) => {
       // 1. Clean submissions
       await tx.submission.deleteMany({ where: { userId: { in: teamIds } } });
-      // 2. Delete team profiles
+      // 2. Clean contest registrations
+      await tx.contestRegistration.deleteMany({
+        where: { user_id: { in: teamIds } },
+      });
+      // 3. Clean team scores
+      await tx.teamScore.deleteMany({
+        where: { team: { user_id: { in: teamIds } } },
+      });
+      // 4. Clean clarifications
+      await tx.clarification.deleteMany({
+        where: { user_id: { in: teamIds } },
+      });
+      // 5. Delete team profiles
       await tx.teamProfile.deleteMany({ where: { user_id: { in: teamIds } } });
-      // 3. Delete users
+      // 6. Delete users
       await tx.user.deleteMany({ where: { id: { in: teamIds } } });
     });
 
@@ -534,7 +554,13 @@ export async function deleteContestAction(contestId: string) {
         },
       });
 
-      // 5. Delete problems
+      // 5. Delete clarifications related to problems in this contest
+      // FIX (Audit Issue #8): Clean up clarifications before deleting problems
+      await tx.clarification.deleteMany({
+        where: { problem_id: { in: problemIds } },
+      });
+
+      // 6. Delete problems
       await tx.problem.deleteMany({ where: { contestId: contestId } });
 
       // 6. Delete announcements
