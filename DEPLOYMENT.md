@@ -84,7 +84,6 @@ git pull origin main
 ### 2.5 Build Fresh Docker Images
 
 ```bash
-npx prisma migrate dev --name add_submission_indexes
 docker compose build --no-cache
 ```
 

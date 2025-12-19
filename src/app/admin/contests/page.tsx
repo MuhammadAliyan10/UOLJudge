@@ -13,7 +13,14 @@ export const dynamic = "force-dynamic";
 export default async function ContestsPage() {
   // CRITICAL FETCH: Include problems for ManageProblemsDialog
   const contests = await prisma.contest.findMany({
-    include: {
+    select: {
+      id: true,
+      name: true,
+      startTime: true,
+      endTime: true,
+      isActive: true,
+      frozenAt: true,
+      category: true, // BUG FIX: Fetch contest category for ManageProblemsDialog
       _count: { select: { problems: true } },
       problems: {
         orderBy: { orderIndex: "asc" },
@@ -39,7 +46,8 @@ export default async function ContestsPage() {
             Contest Management
           </h1>
           <p className="text-slate-500 text-sm max-w-lg">
-            Monitor active competitions, schedule upcoming events, and manage problem sets.
+            Monitor active competitions, schedule upcoming events, and manage
+            problem sets.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -47,7 +55,10 @@ export default async function ContestsPage() {
             href="/admin/contests/results"
             className="group inline-flex items-center gap-2 px-4 py-2 bg-secondary border border-secondary text-white hover:text-white hover:border-primary rounded-md transition-all text-sm font-medium shadow-sm hover:shadow"
           >
-            <Trophy size={15} className="text-slate-400 group-hover:text-amber-500 transition-colors" />
+            <Trophy
+              size={15}
+              className="text-slate-400 group-hover:text-amber-500 transition-colors"
+            />
             <span>Leaderboards</span>
           </Link>
           <div className="h-6 w-px bg-slate-300 mx-1 hidden sm:block" />
