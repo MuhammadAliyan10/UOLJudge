@@ -239,7 +239,7 @@ export function GradingInterface({
 
       if (result.success) {
         toast.success(result.message || "Submission graded successfully");
-        router.refresh();
+        router.push("/jury/submissions"); // Auto-navigate back to submissions list
         setComment("");
       } else {
         toast.error(result.error || "Failed to grade submission");
