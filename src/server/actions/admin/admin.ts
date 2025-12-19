@@ -368,6 +368,7 @@ export async function createContestAction(formData: FormData) {
           name: data.name,
           startTime: new Date(data.startTime),
           endTime: new Date(data.endTime),
+          category: data.category, // BUG FIX: Save contest category to database
         },
       });
 
