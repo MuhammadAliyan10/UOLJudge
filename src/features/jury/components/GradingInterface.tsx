@@ -576,32 +576,18 @@ export function GradingInterface({
                       </Alert>
                     )}
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3">
                       <Button
                         onClick={() => handleGrade("ACCEPTED")}
                         disabled={grading || !scoreValidation.isValid}
                         className={cn(
-                          "bg-green-600 hover:bg-green-700 text-white font-bold h-12 shadow-sm",
+                          "bg-purple-600 hover:bg-purple-700 text-white font-bold h-12 shadow-sm",
                           !scoreValidation.isValid &&
                             "opacity-50 cursor-not-allowed"
                         )}
                       >
                         <CheckCircle size={16} className="mr-2" />
-                        {isGraded ? "UPDATE" : "ACCEPT"}
-                      </Button>
-                      <Button
-                        onClick={() => handleGrade("REJECTED")}
-                        disabled={
-                          grading || !comment.trim() || !scoreValidation.isValid
-                        }
-                        className={cn(
-                          "bg-red-600 hover:bg-red-700 text-white font-bold h-12 shadow-sm",
-                          (!comment.trim() || !scoreValidation.isValid) &&
-                            "opacity-50 cursor-not-allowed"
-                        )}
-                      >
-                        <XCircle size={16} className="mr-2" />
-                        {isGraded ? "UPDATE" : "REJECT"}
+                        Update Score & Feedback
                       </Button>
                     </div>
 

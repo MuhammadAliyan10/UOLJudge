@@ -177,66 +177,37 @@ export async function gradeSubmissionAction(
       const elapsedMs = submissionTime.getTime() - contestStartTime.getTime();
       const timeInMinutes = Math.floor(elapsedMs / 60000);
 
-      let newSolvedCount = teamScore?.solvedCount || 0;
       let newTotalScore = teamScore?.totalScore || 0;
-      let newTotalPenalty = teamScore?.totalPenalty || 0;
 
       // Determine score to add
-      // If manual score is provided, use it. Otherwise default to max points for ACCEPTED, 0 for REJECTED.
+      // If manual score is provided, use it. Otherwise default to max points.
       let finalScore = 0;
       if (score !== undefined) {
         finalScore = score;
       } else {
-        finalScore = verdict === "ACCEPTED" ? submission.problem.points : 0;
+        finalScore = submission.problem.points;
       }
 
-      // RE-GRADING LOGIC: Deduct previous score if this problem was already solved/graded
-      if (currentProblemStat.solved && currentProblemStat.score !== undefined) {
+      // "COUNT THEN VERIFY" MODEL:
+      // solvedCount was already incremented on submission (auto-accept)
+      // Jury only updates the score (quality rating), not the solve status
+
+      // Deduct previous score if this problem was already graded
+      if (
+        currentProblemStat.score !== undefined &&
+        currentProblemStat.score > 0
+      ) {
         newTotalScore -= currentProblemStat.score;
-        // If previously solved, we don't decrement solvedCount usually, unless status changes to REJECTED?
-        // ICPC rules: once solved, always solved. But for manual grading, we might revoke.
-        // If changing from ACCEPTED to REJECTED, decrement solved count.
-        if (previousStatus === "ACCEPTED" && verdict === "REJECTED") {
-          newSolvedCount = Math.max(0, newSolvedCount - 1);
-        }
-      } else if (previousStatus === "ACCEPTED" && verdict === "REJECTED") {
-        // Should not happen if currentProblemStat.solved is false, but safety check
-        newSolvedCount = Math.max(0, newSolvedCount - 1);
       }
 
-      if (verdict === "ACCEPTED") {
-        if (!currentProblemStat.solved || previousStatus !== "ACCEPTED") {
-          // NEW SOLVE! Calculate penalty: Time + (20 × Previous Rejections)
-          const problemPenalty =
-            timeInMinutes + currentProblemStat.attempts * 20;
+      // Add the new score
+      newTotalScore += finalScore;
 
-          newSolvedCount += 1;
-          newTotalScore += finalScore;
-          newTotalPenalty += problemPenalty;
-
-          problemStats[problemId] = {
-            solved: true,
-            attempts: currentProblemStat.attempts + 1,
-            penalty: problemPenalty,
-            score: finalScore,
-          };
-        } else {
-          // Already solved, just updating score (Re-grade with different score)
-          newTotalScore += finalScore;
-          problemStats[problemId] = {
-            ...currentProblemStat,
-            score: finalScore,
-          };
-        }
-      } else {
-        // REJECTED
-        problemStats[problemId] = {
-          ...currentProblemStat,
-          solved: false, // Mark as unsolved if rejected
-          attempts: currentProblemStat.attempts + 1,
-          score: 0,
-        };
-      }
+      // Update problem stats with new score
+      problemStats[problemId] = {
+        ...currentProblemStat,
+        score: finalScore,
+      };
 
       // Update submission
       const updatedSubmission = await tx.submission.update({
@@ -252,7 +223,7 @@ export async function gradeSubmissionAction(
         },
       });
 
-      // Update TeamScore if applicable
+      // Update TeamScore if applicable (only totalScore, not solvedCount/penalty)
       let updatedTeamScore = null;
       if (teamScore) {
         updatedTeamScore = await tx.teamScore.update({
@@ -263,42 +234,32 @@ export async function gradeSubmissionAction(
             },
           },
           data: {
-            solvedCount: newSolvedCount,
             totalScore: newTotalScore,
-            totalPenalty: newTotalPenalty,
             problemStats: problemStats as any,
           },
         });
       }
 
-      // Create System Log with re-grade tracking
+      // Create System Log with score update tracking
       const isRegrade = previousStatus !== SubmissionStatus.PENDING;
       await tx.systemLog.create({
         data: {
           action: "MANUAL_GRADE_UPDATE",
-          level: verdict === "ACCEPTED" ? "INFO" : "WARN",
-          message: `${
-            isRegrade ? "RE-GRADED" : "Graded"
-          } submission: ${verdict} (Score: ${finalScore})`,
-          details: `Jury ${
-            session.username
-          } changed score from ${previousStatus} to ${verdict}.${
+          level: "INFO",
+          message: `Jury updated score: ${finalScore} points`,
+          details: `Jury ${session.username} set score to ${finalScore}.${
             isRegrade && previousGradedBy
               ? ` (Previously graded by ${previousGradedBy.username})`
               : ""
-          } ${comment ? `Reason: ${comment}` : ""}`,
+          } ${comment ? `Comment: ${comment}` : ""}`,
           user_id: juryId,
           submission_id: submissionId,
           metadata: {
             problemId,
-            verdict,
             score: finalScore,
-            solvedCount: newSolvedCount,
-            totalPenalty: newTotalPenalty,
+            totalScore: newTotalScore,
             teamId: teamScore?.teamId,
             juryComment: comment,
-            oldStatus: previousStatus,
-            newStatus: verdict,
             isRegrade,
             previousJuryId: submission.judgedById,
           },

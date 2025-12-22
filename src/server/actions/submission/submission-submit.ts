@@ -223,7 +223,7 @@ export async function submitSolution(
           });
         }
 
-        // Create new submission
+        // Create new submission - AUTO-ACCEPTED (Count then Verify)
         const newSubmission = await tx.submission.create({
           data: {
             userId,
@@ -231,18 +231,104 @@ export async function submitSolution(
             fileUrl: filePath,
             fileHash,
             fileType: fileExtension,
-            status: SubmissionStatus.PENDING,
+            status: SubmissionStatus.ACCEPTED, // Auto-accept for instant feedback
             isLatest: true,
             canRetry: false,
+            manualScore: 0, // Jury will update this later
           },
         });
+
+        // ============================================================
+        // INSTANT SCORING: Update TeamScore immediately
+        // ============================================================
+        const teamId = user.team_profile?.id;
+        if (teamId) {
+          const contestStartTime = contest.startTime;
+
+          // Calculate submission time penalty
+          const elapsedMs = new Date().getTime() - contestStartTime.getTime();
+          const timeInMinutes = Math.floor(elapsedMs / 60000);
+
+          // Upsert TeamScore
+          const existingTeamScore = await tx.teamScore.upsert({
+            where: {
+              teamId_contestId: {
+                teamId,
+                contestId,
+              },
+            },
+            create: {
+              teamId,
+              contestId,
+              solvedCount: 0,
+              totalScore: 0,
+              totalPenalty: 0,
+              problemStats: {},
+            },
+            update: {},
+          });
+
+          const problemStats =
+            (existingTeamScore.problemStats as Record<string, any>) || {};
+          const currentProblemStat = problemStats[problemId] || {
+            solved: false,
+            attempts: 0,
+            penalty: 0,
+            score: 0,
+          };
+
+          // Only increment if not already solved
+          if (!currentProblemStat.solved) {
+            const problemPenalty =
+              timeInMinutes + currentProblemStat.attempts * 20;
+
+            problemStats[problemId] = {
+              solved: true,
+              attempts: currentProblemStat.attempts + 1,
+              penalty: problemPenalty,
+              score: 0, // Jury will update
+            };
+
+            await tx.teamScore.update({
+              where: {
+                teamId_contestId: {
+                  teamId,
+                  contestId,
+                },
+              },
+              data: {
+                solvedCount: existingTeamScore.solvedCount + 1,
+                totalPenalty: existingTeamScore.totalPenalty + problemPenalty,
+                problemStats: problemStats as any,
+              },
+            });
+          } else {
+            // Already solved - just increment attempts
+            problemStats[problemId] = {
+              ...currentProblemStat,
+              attempts: currentProblemStat.attempts + 1,
+            };
+
+            await tx.teamScore.update({
+              where: {
+                teamId_contestId: {
+                  teamId,
+                  contestId,
+                },
+              },
+              data: {
+                problemStats: problemStats as any,
+              },
+            });
+          }
+        }
 
         // Create system log
         await tx.systemLog.create({
           data: {
             action: "SUBMISSION",
             level: "INFO",
-            message: `Team ${user.team_profile?.display_name} submitted solution for problem ${problem.title}`,
+            message: `Team ${user.team_profile?.display_name} submitted solution for problem ${problem.title} (Auto-Accepted)`,
             details: `Submission ID: ${newSubmission.id}`,
             user_id: userId,
             submission_id: newSubmission.id,
@@ -252,6 +338,7 @@ export async function submitSolution(
               fileType: fileExtension,
               teamCategory: user.team_profile?.category,
               problemCategory: problem.category,
+              autoAccepted: true,
             },
           },
         });
