@@ -299,15 +299,12 @@ export function LeaderboardClient({
               <TableHead className="h-14 text-slate-400 font-extrabold uppercase text-xs tracking-widest">
                 Progress
               </TableHead>
-              <TableHead className="w-40 text-right h-14 text-slate-400 font-extrabold uppercase text-xs tracking-widest pr-8">
-                Score
-              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {teams.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="h-64 text-center">
+                <TableCell colSpan={3} className="h-64 text-center">
                   <div className="flex flex-col items-center justify-center text-slate-300 gap-4">
                     <Trophy className="h-12 w-12 opacity-20" />
                     <p className="text-lg font-medium text-slate-400">
@@ -386,20 +383,6 @@ export function LeaderboardClient({
                           </span>
                         )}
                       </div>
-                    </TableCell>
-
-                    {/* Score */}
-                    <TableCell className="text-right pr-8">
-                      <span
-                        className={cn(
-                          "text-3xl font-black tabular-nums tracking-tight",
-                          rank === 1
-                            ? "text-emerald-600"
-                            : "text-slate-800 dark:text-white"
-                        )}
-                      >
-                        {team.total_score}
-                      </span>
                     </TableCell>
                   </TableRow>
                 );
