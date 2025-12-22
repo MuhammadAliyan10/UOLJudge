@@ -114,6 +114,10 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
         hasConnected = true;
         setIsConnected(true);
         reconnectAttempts.current = 0;
+        // AUDIT FIX: Dispatch event for global UI feedback (reconnection success)
+        if (typeof window !== "undefined" && reconnectAttempts.current > 0) {
+          window.dispatchEvent(new CustomEvent("ws-connected"));
+        }
         options.onConnect?.();
       };
 
@@ -178,9 +182,13 @@ export function useContestSocket(options: UseContestSocketOptions = {}) {
       };
 
       ws.onclose = () => {
-        // Only log if we previously connected (real disconnection)
+        // Only notify if we previously connected (real disconnection)
         // Silent if never connected (server not running)
         if (hasConnected) {
+          // AUDIT FIX: Dispatch event for global UI feedback
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("ws-disconnected"));
+          }
         }
         setIsConnected(false);
         options.onDisconnect?.();

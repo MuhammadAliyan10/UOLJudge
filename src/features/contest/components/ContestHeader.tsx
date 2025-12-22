@@ -57,30 +57,15 @@ export default function ContestHeader({
   useContestSocket({
     onLeaderboardUpdate: (payload) => {
       // Debug logging
-      if (process.env.NODE_ENV === "development") {
-        console.log("[ContestHeader] LEADERBOARD_UPDATE received:", payload);
-        console.log("[ContestHeader] My teamId:", teamId);
-      }
 
       // Update score if this is our team
       if (payload.teamId === teamId) {
         // Use totalScore from payload
         if (payload.totalScore !== undefined) {
-          if (process.env.NODE_ENV === "development") {
-            console.log(
-              "[ContestHeader] Updating score from",
-              liveScore,
-              "to",
-              payload.totalScore
-            );
-          }
           setLiveScore(payload.totalScore);
         }
         // Update rank if provided
         if (payload.rank !== undefined) {
-          if (process.env.NODE_ENV === "development") {
-            console.log("[ContestHeader] Updating rank to", payload.rank);
-          }
           setLiveRank(payload.rank);
         }
       }

@@ -113,6 +113,32 @@ export async function submitSolution(
     }
 
     // ============================================================
+    // RATE LIMIT: 1 submission per 30 seconds per team (DoS Prevention)
+    // AUDIT FIX: Prevents malicious rapid-fire uploads
+    // ============================================================
+    const RATE_LIMIT_SECONDS = 30;
+    const lastSubmission = await prisma.submission.findFirst({
+      where: {
+        userId,
+        submittedAt: {
+          gte: new Date(Date.now() - RATE_LIMIT_SECONDS * 1000),
+        },
+      },
+      orderBy: { submittedAt: "desc" },
+    });
+
+    if (lastSubmission) {
+      const elapsedMs = Date.now() - lastSubmission.submittedAt.getTime();
+      const waitSeconds = Math.ceil(
+        (RATE_LIMIT_SECONDS * 1000 - elapsedMs) / 1000
+      );
+      return {
+        success: false,
+        message: `Rate limit: Please wait ${waitSeconds} seconds before submitting again.`,
+      };
+    }
+
+    // ============================================================
     // CATEGORY-SPECIFIC FILE SIZE VALIDATION
     // ============================================================
     const category = user.team_profile.category;

@@ -22,16 +22,17 @@ import {
 
 interface ContestLayoutClientProps {
   teamName: string;
-  teamId: string; // Added teamId
+  teamId: string;
   initialScore?: number;
-  initialRank?: number; // Added optional teamRank
+  initialRank?: number;
   contestEndTime?: Date;
   contestStartTime?: Date;
   teamCategory: Category;
   contestId?: string;
+  contestName?: string; // Real contest name from DB
   isPaused?: boolean;
   isFrozen?: boolean;
-  isBlocked?: boolean; // NEW: Team blocked status
+  isBlocked?: boolean;
   children: React.ReactNode;
 }
 
@@ -44,9 +45,10 @@ export function ContestLayoutClient({
   contestStartTime: initialStartTime,
   teamCategory,
   contestId,
+  contestName = "Contest",
   isPaused: initialPaused = false,
   isFrozen: initialFrozen = false,
-  isBlocked: initialBlocked = false, // NEW: Blocked status
+  isBlocked: initialBlocked = false,
   children,
 }: ContestLayoutClientProps) {
   const router = useRouter();
@@ -86,6 +88,36 @@ export function ContestLayoutClient({
     const interval = setInterval(updateStatus, 1000);
     return () => clearInterval(interval);
   }, [startTime, endTime]);
+
+  // ---------------------------------------------------
+  // A.1 WEBSOCKET DISCONNECTION FEEDBACK (Audit Fix)
+  // ---------------------------------------------------
+  useEffect(() => {
+    const handleDisconnect = () => {
+      // Only import toast dynamically to avoid SSR issues
+      import("sonner").then(({ toast }) => {
+        toast.warning("Connection lost. Reconnecting...", {
+          duration: Infinity,
+          id: "ws-reconnect",
+        });
+      });
+    };
+
+    const handleConnect = () => {
+      import("sonner").then(({ toast }) => {
+        toast.dismiss("ws-reconnect");
+        toast.success("Connected", { duration: 2000 });
+      });
+    };
+
+    window.addEventListener("ws-disconnected", handleDisconnect);
+    window.addEventListener("ws-connected", handleConnect);
+
+    return () => {
+      window.removeEventListener("ws-disconnected", handleDisconnect);
+      window.removeEventListener("ws-connected", handleConnect);
+    };
+  }, []);
 
   // ---------------------------------------------------
   // B. REAL-TIME SOCKET UPDATES
@@ -170,7 +202,7 @@ export function ContestLayoutClient({
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
           {contestStatus === "PRE_START" ? (
             <ContestNotStarted
-              contestName="UOL Coding Contest"
+              contestName={contestName}
               startTime={startTime}
               contestId={contestId}
             />

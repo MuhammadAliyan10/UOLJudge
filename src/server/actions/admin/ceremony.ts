@@ -62,9 +62,12 @@ export async function generateCeremony(contestId: string) {
     throw new Error("Contest not found");
   }
 
-  // Fetch all team scores with team profile details
-  // Note: TeamScore has teamId which links to TeamProfile
+  // Fetch team scores for THIS CONTEST ONLY with team profile details
+  // CRITICAL FIX: Filter by contestId in query to ensure correct per-contest sorting
   const teamScores = await db.teamScore.findMany({
+    where: {
+      contestId: contestId, // FIX: Only get teams from this contest
+    },
     include: {
       team: {
         select: {
@@ -74,15 +77,14 @@ export async function generateCeremony(contestId: string) {
       },
     },
     orderBy: [
-      { solvedCount: "desc" },  // 1st: Most problems solved
-      { totalScore: "desc" },   // 2nd: Highest total score
-      { totalPenalty: "asc" },  // 3rd: Lowest penalty (tiebreaker)
+      { solvedCount: "desc" }, // 1st: Most problems solved
+      { totalScore: "desc" }, // 2nd: Highest total score
+      { totalPenalty: "asc" }, // 3rd: Lowest penalty (tiebreaker)
     ],
   });
 
-  // Filter teams for this contest and transform data
+  // Transform data - contest filtering already done in query above
   const rankings = teamScores
-    .filter((score) => score.team.assigned_contest_id === contestId)
     .filter((score) => score.solvedCount > 0) // Only include teams with at least 1 solved problem
     .map((score, index) => ({
       rank: index + 1,
