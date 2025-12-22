@@ -355,6 +355,7 @@ export async function submitSolution(
     // ============================================================
     // STEP 8: WEBSOCKET BROADCAST
     // ============================================================
+    // Broadcast NEW_SUBMISSION for jury queue
     await broadcastContestUpdate("NEW_SUBMISSION", {
       submissionId: result.id,
       teamId: user.team_profile.id,
@@ -362,6 +363,21 @@ export async function submitSolution(
       contestId,
       teamName: user.team_profile.display_name,
       problemTitle: problem.title,
+    });
+
+    // Broadcast LEADERBOARD_UPDATE for real-time leaderboard refresh
+    // This triggers immediate updates on all connected leaderboard clients
+    await broadcastContestUpdate("LEADERBOARD_UPDATE", {
+      teamId: user.team_profile.id,
+      contestId,
+      action: "SUBMISSION_ACCEPTED",
+    });
+
+    // Broadcast SUBMISSION_UPDATE for any other listeners
+    await broadcastContestUpdate("SUBMISSION_UPDATE", {
+      submissionId: result.id,
+      status: "ACCEPTED",
+      teamId: user.team_profile.id,
     });
 
     return {

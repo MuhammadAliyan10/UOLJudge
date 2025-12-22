@@ -82,11 +82,13 @@ export async function getAssignedContests(): Promise<AssignedContest[]> {
     const assignedContestIds = assignments.map((a) => a.contest.id);
 
     // FIX (Audit Issue #4): Single query instead of N+1 Promise.all pattern
-    // Get pending counts for all assigned contests in one query
+    // "COUNT THEN VERIFY" MODEL: Count ACCEPTED submissions needing scoring
     const pendingCounts = await prisma.submission.groupBy({
       by: ["problemId"],
       where: {
-        status: SubmissionStatus.PENDING,
+        status: SubmissionStatus.ACCEPTED,
+        manualScore: 0,
+        isLatest: true,
         problem: {
           contestId: { in: assignedContestIds },
         },
@@ -145,10 +147,13 @@ export async function getPendingSubmissions(): Promise<PendingSubmission[]> {
       return [];
     }
 
-    // Fetch pending submissions from assigned contests
+    // Fetch submissions needing jury scoring (auto-accepted but not yet scored)
+    // "COUNT THEN VERIFY" MODEL: Show ACCEPTED submissions with manualScore = 0
     const submissions = await prisma.submission.findMany({
       where: {
-        status: SubmissionStatus.PENDING,
+        status: SubmissionStatus.ACCEPTED,
+        manualScore: 0, // Not yet scored by jury
+        isLatest: true, // Only show latest submission per problem
         problem: {
           contestId: { in: assignedContestIds },
         },
