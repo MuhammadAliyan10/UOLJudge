@@ -96,14 +96,14 @@ export function GradingInterface({
     "ACCEPTED" | "REJECTED" | null
   >(null);
 
-  // Pre-fill if submission is already graded
-  const isGraded =
-    submission.status === "ACCEPTED" || submission.status === "REJECTED";
+  // Pre-fill if submission was actually graded by a jury (not just auto-approved)
+  const wasGradedByJury = submission.judgedById !== null;
   const [comment, setComment] = useState(
-    isGraded && submission.juryComment ? submission.juryComment : ""
+    wasGradedByJury && submission.juryComment ? submission.juryComment : ""
   );
+  // Only show existing score if jury actually graded it (not auto-approved with score=0)
   const [manualScore, setManualScore] = useState<string>(
-    isGraded && submission.manualScore != null
+    wasGradedByJury && submission.manualScore != null
       ? String(submission.manualScore)
       : ""
   );
@@ -215,14 +215,17 @@ export function GradingInterface({
       return;
     }
 
-    // Confirm re-grade if already graded
-    if (submission.status !== "PENDING") {
+    // Only show re-grade confirmation if submission was actually graded by a jury
+    // (judgedById is set). Auto-approved submissions (judgedById is null) don't need confirmation.
+    const isActuallyGradedByJury = submission.judgedById !== null;
+
+    if (isActuallyGradedByJury) {
       setPendingVerdict(verdict);
       setShowRegradeDialog(true);
       return;
     }
 
-    // Direct grading for PENDING submissions
+    // Direct grading for auto-approved or PENDING submissions
     await performGrade(verdict);
   };
 

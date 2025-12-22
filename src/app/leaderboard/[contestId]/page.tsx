@@ -29,7 +29,7 @@ export default async function ContestLeaderboardPage({ params }: PageProps) {
           name: true,
           startTime: true, // Add startTime for scheduled state detection
           endTime: true,
-          frozenAt: true,
+          isFrozen: true, // Direct boolean field for freeze status
           problems: {
             select: { id: true, orderIndex: true },
             orderBy: { orderIndex: "asc" },
@@ -90,12 +90,14 @@ export default async function ContestLeaderboardPage({ params }: PageProps) {
         };
       });
 
-      // Sort by ICPC 3-tier: Most Solved -> Highest Score -> Lowest Penalty
+      // Sort by: 1. Most Problems Solved (descending) → 2. Lowest Penalty (ascending)
+      // This ensures faster solvers rank higher when tied on problem count
       formattedTeams.sort((a, b) => {
-        if (b.solved_count !== a.solved_count)
+        // Primary: Most problems solved wins
+        if (b.solved_count !== a.solved_count) {
           return b.solved_count - a.solved_count;
-        if (b.total_score !== a.total_score)
-          return b.total_score - a.total_score;
+        }
+        // Secondary: Lowest penalty wins (faster submission time)
         return a.total_penalty - b.total_penalty;
       });
 
@@ -113,7 +115,8 @@ export default async function ContestLeaderboardPage({ params }: PageProps) {
   if (!data) return notFound();
 
   const { teams, contest } = data;
-  const isFrozen = contest.frozenAt ? new Date() > contest.frozenAt : false;
+  // Use the actual isFrozen field from database (not computed from frozenAt)
+  const isFrozen = contest.isFrozen ?? false;
 
   return (
     <LeaderboardClient

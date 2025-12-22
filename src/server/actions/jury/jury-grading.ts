@@ -126,11 +126,14 @@ export async function gradeSubmissionAction(
         throw new Error("Submission not found");
       }
 
-      // PREVENT CONCURRENT GRADING: If already graded by another jury, block this operation
-      if (
-        currentSubmission.status !== SubmissionStatus.PENDING &&
-        currentSubmission.judgedById !== juryId
-      ) {
+      // PREVENT CONCURRENT GRADING:
+      // Block ONLY if another jury has already graded (judgedById is set AND different from current jury)
+      // Allow if: judgedById is NULL (auto-approved, first grading) OR judgedById === juryId (re-grading own work)
+      const alreadyGradedByAnotherJury =
+        currentSubmission.judgedById !== null &&
+        currentSubmission.judgedById !== juryId;
+
+      if (alreadyGradedByAnotherJury) {
         throw new Error(
           `RACE_CONDITION_BLOCKED: This submission was already graded by another jury member. Refresh to see the latest status.`
         );
@@ -271,42 +274,10 @@ export async function gradeSubmissionAction(
       };
     });
 
-    // ============================================================
-    // STEP 5: REAL-TIME BROADCASTS
-    // ============================================================
-    // Notify admin dashboard (submission graded)
-    await broadcastContestUpdate("SUBMISSION_UPDATE", {
-      action: "SUBMISSION_GRADED",
-      submissionId,
-      status: verdict,
-      judgedById: juryId,
-      score: score,
-    });
-
-    // Notify leaderboard (score update)
-    if (result.teamScore) {
-      await broadcastContestUpdate("LEADERBOARD_UPDATE", {
-        teamId: result.teamScore.teamId,
-        solvedCount: result.teamScore.solvedCount,
-        totalScore: result.teamScore.totalScore,
-        totalPenalty: result.teamScore.totalPenalty,
-      });
-    }
-
-    // Notify other juries (queue update)
-    await broadcastContestUpdate("JURY_QUEUE_UPDATE", {
-      contestId,
-      action: "SUBMISSION_GRADED",
-    });
-
-    // Revalidate jury dashboard
-    revalidatePath("/jury");
-
+    // Return success response after transaction completes
     return {
       success: true,
-      message: `Submission graded as ${verdict} with ${
-        score ?? (verdict === "ACCEPTED" ? submission.problem.points : 0)
-      } points`,
+      message: "Submission graded successfully",
     };
   } catch (error: any) {
     console.error("Error grading submission:", error);

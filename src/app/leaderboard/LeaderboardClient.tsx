@@ -6,15 +6,7 @@ import { Category } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { useContestSocket } from "@/features/contest/hooks/useContestSocket";
 import { useDebouncedRefresh } from "@/hooks/useDebouncedRefresh";
-import {
-  WifiOff,
-  Cpu,
-  Globe,
-  Smartphone,
-  Trophy,
-  Medal,
-  Activity,
-} from "lucide-react";
+import { Trophy } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -24,40 +16,9 @@ import {
   TableRow,
 } from "@/features/shared/ui/table";
 import { Badge } from "@/features/shared/ui/badge";
-import { Card } from "@/features/shared/ui/card";
 
-// --- ANIMATED DIGIT COMPONENT ---
-// This component handles the "sliding" animation
-const TickerDigit = ({ value }: { value: string }) => {
-  const num = parseInt(value);
-
-  return (
-    <div className="h-16 md:h-20 w-10 md:w-14 overflow-hidden relative">
-      <div
-        className="absolute top-0 left-0 w-full transition-transform duration-500 ease-in-out"
-        style={{ transform: `translateY(-${num * 10}%)` }} // Slides to the correct number
-      >
-        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-          <div
-            key={n}
-            className="h-16 md:h-20 flex items-center justify-center font-mono text-5xl md:text-7xl font-black text-slate-900 dark:text-white"
-          >
-            {n}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// --- SEPARATOR COMPONENT ---
-const TickerSeparator = () => (
-  <div className="h-16 md:h-20 flex items-center justify-center pb-2">
-    <span className="text-3xl md:text-5xl font-black text-slate-300 animate-pulse">
-      :
-    </span>
-  </div>
-);
+// Helper to convert problem index to letter (0 -> A, 1 -> B, etc)
+const getLetter = (index: number) => String.fromCharCode(65 + index);
 
 interface Team {
   id: string;
@@ -86,228 +47,186 @@ export function LeaderboardClient({
   category,
 }: LeaderboardClientProps) {
   const router = useRouter();
-
-  // FIX (Audit Issue #6): Use debounced refresh to prevent server thrashing
-  // When 100+ clients receive simultaneous WebSocket events, this prevents
-  // 100+ router.refresh() calls from overwhelming the server
   const refresh = useDebouncedRefresh(2000);
 
-  // State for teams data - initialize with server data
+  // State
   const [teams, setTeams] = useState<Team[]>(initialTeams);
+  const [frozen, setFrozen] = useState(isFrozen);
 
-  // State for individual digits to drive the ticker
-  const [timeDigits, setTimeDigits] = useState({
-    h1: "0",
-    h2: "0",
-    m1: "0",
-    m2: "0",
-    s1: "0",
-    s2: "0",
+  // Time state
+  const [timeLeft, setTimeLeft] = useState({
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
   });
 
-  const getLetter = (idx: number) => String.fromCharCode(65 + idx);
-  const CategoryIcon =
-    category === "WEB" ? Globe : category === "ANDROID" ? Smartphone : Cpu;
-
-  // Real-time updates via WebSocket - update state directly
+  // WebSocket handlers
   useContestSocket({
-    onLeaderboardUpdate: (payload) => {
-      // FIX: Debounced refresh instead of direct router.refresh()
-      refresh();
-    },
-    onSubmissionUpdate: () => {
-      // FIX: Debounced refresh instead of direct router.refresh()
-      refresh();
-    },
+    onLeaderboardUpdate: () => refresh(),
+    onSubmissionUpdate: () => refresh(),
     onStatusUpdate: (payload) => {
-      // Fix: When contest ends, force countdown to zero
+      if (payload.isFrozen !== undefined) {
+        setFrozen(payload.isFrozen);
+      }
       if (payload.endTime) {
         const endTime = new Date(payload.endTime);
         const now = new Date();
-
         if (endTime <= now) {
-          // Force countdown to show 00:00:00
-          setTimeDigits({
-            h1: "0",
-            h2: "0",
-            m1: "0",
-            m2: "0",
-            s1: "0",
-            s2: "0",
-          });
+          setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
         }
       }
       refresh();
     },
   });
 
-  // Update teams when initialTeams prop changes (from router.refresh())
-  useEffect(() => {
-    setTeams(initialTeams);
-  }, [initialTeams]);
+  // Sync props with state
+  useEffect(() => setTeams(initialTeams), [initialTeams]);
+  useEffect(() => setFrozen(isFrozen), [isFrozen]);
 
-  // Contest State Detection
+  // Contest state detection
   const now = new Date();
   const isUpcoming = contestStartTime
     ? now < new Date(contestStartTime)
     : false;
-  const isActive =
-    contestStartTime && contestEndTime
-      ? now >= new Date(contestStartTime) && now < new Date(contestEndTime)
-      : false;
 
-  // Timer Logic
+  // Countdown timer
   useEffect(() => {
-    // If contest is upcoming, show countdown to start
-    if (isUpcoming && contestStartTime) {
-      const tick = () => {
-        const now = new Date();
-        const start = new Date(contestStartTime);
-        const diff = Math.max(0, start.getTime() - now.getTime());
+    const targetDate = isUpcoming ? contestStartTime : contestEndTime;
+    if (!targetDate) return;
 
-        const h = Math.floor(diff / (1000 * 60 * 60));
-        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const s = Math.floor((diff % (1000 * 60)) / 1000);
-
-        const hStr = h.toString().padStart(2, "0");
-        const mStr = m.toString().padStart(2, "0");
-        const sStr = s.toString().padStart(2, "0");
-
-        setTimeDigits({
-          h1: hStr[0],
-          h2: hStr[1],
-          m1: mStr[0],
-          m2: mStr[1],
-          s1: sStr[0],
-          s2: sStr[1],
-        });
-      };
-      tick();
-      const interval = setInterval(tick, 1000);
-      return () => clearInterval(interval);
-    }
-
-    // If contest is active, show countdown to end
-    if (!contestEndTime) return;
     const tick = () => {
       const now = new Date();
-      const end = new Date(contestEndTime);
-      const diff = Math.max(0, end.getTime() - now.getTime());
+      const target = new Date(targetDate);
+      const diff = Math.max(0, target.getTime() - now.getTime());
 
-      const h = Math.floor(diff / (1000 * 60 * 60));
-      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const s = Math.floor((diff % (1000 * 60)) / 1000);
-
-      // Pad and split into digits
-      const hStr = h.toString().padStart(2, "0");
-      const mStr = m.toString().padStart(2, "0");
-      const sStr = s.toString().padStart(2, "0");
-
-      setTimeDigits({
-        h1: hStr[0],
-        h2: hStr[1],
-        m1: mStr[0],
-        m2: mStr[1],
-        s1: sStr[0],
-        s2: sStr[1],
+      setTimeLeft({
+        hours: Math.floor(diff / (1000 * 60 * 60)),
+        minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((diff % (1000 * 60)) / 1000),
       });
     };
+
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [contestEndTime, contestStartTime, isUpcoming]);
+  }, [contestStartTime, contestEndTime, isUpcoming]);
+
+  // Format time digits
+  const formatDigits = (num: number) => num.toString().padStart(2, "0");
+  const [h1, h2] = formatDigits(timeLeft.hours).split("");
+  const [m1, m2] = formatDigits(timeLeft.minutes).split("");
+  const [s1, s2] = formatDigits(timeLeft.seconds).split("");
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto space-y-4 p-4 md:p-8">
-      {/* 1. HEADER (Transparent, No BG) */}
-      <div className="flex flex-col xl:flex-row items-center justify-between gap-8 mb-8">
-        {/* Left: Title Area */}
-        <div className="flex flex-col items-center xl:items-start text-center xl:text-left gap-4">
-          <div className="flex items-center gap-4">
-            {category && (
-              <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl">
-                <CategoryIcon className="h-8 w-8 text-slate-900 dark:text-white" />
+    <div className="w-full max-w-[1300px] mx-auto px-4 py-12">
+      {/* Header */}
+      <header className="flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8 mb-10">
+        {/* Left: Title + Status Badge */}
+        <div className="text-center lg:text-left">
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
+            {contestName}
+          </h1>
+
+          {/* Status Badge */}
+          {frozen ? (
+            <Badge
+              variant="outline"
+              className="bg-amber-50 border-amber-200 text-amber-700 gap-1.5"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              Frozen
+            </Badge>
+          ) : isUpcoming ? (
+            <Badge
+              variant="outline"
+              className="bg-blue-50 border-blue-200 text-blue-700 gap-1.5"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              Scheduled
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="bg-green-50 border-green-200 text-green-700 gap-1.5"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              Live
+            </Badge>
+          )}
+        </div>
+
+        {/* Right: Countdown Timer */}
+        <div className="flex items-center gap-4 md:gap-6">
+          {/* Hours */}
+          <div className="text-center">
+            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-1.5">
+              Hours
+            </p>
+            <div className="flex gap-1">
+              <div className="w-10 h-12 md:w-12 md:h-14 bg-slate-100 border border-slate-200 rounded-md flex items-center justify-center text-xl md:text-2xl font-bold text-slate-900">
+                {h1}
               </div>
-            )}
-            <div>
-              <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-slate-900 dark:text-white uppercase">
-                {category ? category : contestName}
-              </h1>
-              {category && (
-                <span className="text-lg font-bold text-slate-400 tracking-widest uppercase">
-                  Leaderboard
-                </span>
-              )}
+              <div className="w-10 h-12 md:w-12 md:h-14 bg-slate-100 border border-slate-200 rounded-md flex items-center justify-center text-xl md:text-2xl font-bold text-slate-900">
+                {h2}
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {isFrozen ? (
-              <Badge
-                variant="destructive"
-                className="px-3 py-1 text-sm font-bold uppercase tracking-widest"
-              >
-                <WifiOff className="w-3 h-3 mr-2" /> Frozen
-              </Badge>
-            ) : isUpcoming ? (
-              <Badge className="px-3 py-1 text-sm font-bold uppercase tracking-widest bg-blue-100 text-blue-700 border-blue-300">
-                Scheduled
-              </Badge>
-            ) : (
-              <div className="flex items-center gap-2 text-emerald-600 font-bold uppercase tracking-widest text-sm bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                </span>
-                Live Feed
+          {/* Minutes */}
+          <div className="text-center">
+            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-1.5">
+              Minutes
+            </p>
+            <div className="flex gap-1">
+              <div className="w-10 h-12 md:w-12 md:h-14 bg-slate-100 border border-slate-200 rounded-md flex items-center justify-center text-xl md:text-2xl font-bold text-slate-900">
+                {m1}
               </div>
-            )}
+              <div className="w-10 h-12 md:w-12 md:h-14 bg-slate-100 border border-slate-200 rounded-md flex items-center justify-center text-xl md:text-2xl font-bold text-slate-900">
+                {m2}
+              </div>
+            </div>
+          </div>
+
+          {/* Seconds */}
+          <div className="text-center">
+            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-1.5">
+              Seconds
+            </p>
+            <div className="flex gap-1">
+              <div className="w-10 h-12 md:w-12 md:h-14 bg-slate-100 border border-slate-200 rounded-md flex items-center justify-center text-xl md:text-2xl font-bold text-slate-900">
+                {s1}
+              </div>
+              <div className="w-10 h-12 md:w-12 md:h-14 bg-slate-100 border border-slate-200 rounded-md flex items-center justify-center text-xl md:text-2xl font-bold text-slate-900">
+                {s2}
+              </div>
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* Right: THE ANIMATED TICKER (No BG, Huge Text) */}
-        <div className="flex flex-col items-center xl:items-end">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">
-            {isUpcoming ? "Starts In" : "Time Remaining"}
-          </span>
-
-          {/* Ticker Container */}
-          <div className="flex items-center gap-0.5 md:gap-1">
-            <TickerDigit value={timeDigits.h1} />
-            <TickerDigit value={timeDigits.h2} />
-            <TickerSeparator />
-            <TickerDigit value={timeDigits.m1} />
-            <TickerDigit value={timeDigits.m2} />
-            <TickerSeparator />
-            <TickerDigit value={timeDigits.s1} />
-            <TickerDigit value={timeDigits.s2} />
-          </div>
-        </div>
-      </div>
-
-      {/* 2. TABLE */}
-      <Card className="border-0 shadow-lg ring-1 ring-slate-900/5 overflow-hidden bg-white dark:bg-slate-900">
+      {/* Leaderboard Table */}
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
         <Table>
-          <TableHeader className="bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800">
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="w-24 text-center h-14 text-slate-400 font-extrabold uppercase text-xs tracking-widest">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent border-b border-slate-200">
+              <TableHead className="w-[72px] h-11 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide bg-slate-50">
                 Rank
               </TableHead>
-              <TableHead className="h-14 text-slate-400 font-extrabold uppercase text-xs tracking-widest">
+              <TableHead className="h-11 text-xs font-semibold text-slate-500 uppercase tracking-wide bg-slate-50">
                 Team
               </TableHead>
-              <TableHead className="h-14 text-slate-400 font-extrabold uppercase text-xs tracking-widest">
-                Progress
+              <TableHead className="h-11 text-xs font-semibold text-slate-500 uppercase tracking-wide bg-slate-50">
+                Problems Solved
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {teams.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} className="h-64 text-center">
-                  <div className="flex flex-col items-center justify-center text-slate-300 gap-4">
-                    <Trophy className="h-12 w-12 opacity-20" />
-                    <p className="text-lg font-medium text-slate-400">
+                <TableCell colSpan={3} className="h-48 text-center">
+                  <div className="flex flex-col items-center justify-center text-slate-400 gap-3">
+                    <Trophy className="h-10 w-10 opacity-30" />
+                    <p className="text-sm font-medium">
                       Waiting for submissions...
                     </p>
                   </div>
@@ -320,69 +239,56 @@ export function LeaderboardClient({
                 return (
                   <TableRow
                     key={team.id}
-                    className={cn(
-                      "h-20 transition-all border-b border-slate-100 dark:border-slate-800 last:border-0",
-                      rank === 1
-                        ? "bg-amber-50/50 hover:bg-amber-50"
-                        : "hover:bg-slate-50 dark:hover:bg-slate-900/50"
-                    )}
+                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors"
                   >
                     {/* Rank */}
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center">
-                        {rank === 1 ? (
-                          <Medal className="h-8 w-8 text-amber-400 drop-shadow-sm" />
-                        ) : rank === 2 ? (
-                          <Medal className="h-7 w-7 text-slate-400" />
-                        ) : rank === 3 ? (
-                          <Medal className="h-6 w-6 text-amber-700" />
-                        ) : (
-                          <span className="text-lg font-bold text-slate-400">
-                            #{rank}
-                          </span>
-                        )}
-                      </div>
+                    <TableCell className="text-center py-3.5">
+                      {rank <= 3 ? (
+                        <span
+                          className={cn(
+                            "inline-flex items-center justify-center w-7 h-7 rounded text-xs font-bold text-white",
+                            rank === 1 && "bg-amber-500",
+                            rank === 2 && "bg-slate-400",
+                            rank === 3 && "bg-amber-700"
+                          )}
+                        >
+                          {rank}
+                        </span>
+                      ) : (
+                        <span className="text-sm font-semibold text-slate-500">
+                          {rank}
+                        </span>
+                      )}
                     </TableCell>
 
                     {/* Team */}
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span
-                          className={cn(
-                            "font-bold text-lg leading-none mb-1",
-                            rank === 1
-                              ? "text-amber-900"
-                              : "text-slate-700 dark:text-slate-200"
-                          )}
-                        >
-                          {team.display_name}
-                        </span>
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                          @{team.username}
-                        </span>
+                    <TableCell className="py-3.5">
+                      <div className="text-[15px] font-semibold text-slate-900 leading-tight">
+                        {team.display_name}
+                      </div>
+                      <div className="text-xs text-slate-400 mt-0.5">
+                        @{team.username}
                       </div>
                     </TableCell>
 
-                    {/* Progress Badges */}
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1.5">
-                        {team.solved_indexes.length > 0 ? (
-                          team.solved_indexes
+                    {/* Problems Solved */}
+                    <TableCell className="py-3.5">
+                      {team.solved_indexes.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {team.solved_indexes
                             .sort((a, b) => a - b)
                             .map((idx) => (
-                              <Badge
+                              <span
                                 key={idx}
-                                className="h-9 w-9 p-0 flex items-center justify-center bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm shadow-sm border-0 rounded-md"
+                                className="inline-flex items-center justify-center w-7 h-7 bg-emerald-500 text-white text-[11px] font-semibold rounded"
                               >
                                 {getLetter(idx)}
-                              </Badge>
-                            ))
-                        ) : (
-                          <span className="text-slate-200 text-2xl font-thin select-none">
-                            -
-                          </span>
-                        )}
-                      </div>
+                              </span>
+                            ))}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-slate-300">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -390,7 +296,7 @@ export function LeaderboardClient({
             )}
           </TableBody>
         </Table>
-      </Card>
+      </div>
     </div>
   );
 }
