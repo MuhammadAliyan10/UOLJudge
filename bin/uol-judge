@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# UOLJudge CLI Helper
+# Version: 1.0.0
+
+set -e
+
+COMMAND=$1
+ARGS=${@:2}
+
+function show_help {
+    echo "Usage: ./bin/uol-judge [command]"
+    echo ""
+    echo "Commands:"
+    echo "  start       Start all services (detached mode)"
+    echo "  stop        Stop all services"
+    echo "  restart     Restart all services"
+    echo "  logs        View logs for all services"
+    echo "  init        Initialize database (migrate & seed)"
+    echo "  deploy      Full deployment cycle (pull, build, up, migrate)"
+    echo "  backup      Create a database backup"
+    echo "  clean       Remove all containers and volumes (WARNING: DATA LOSS)"
+    echo "  help        Show this help message"
+}
+
+if [ -z "$COMMAND" ]; then
+    show_help
+    exit 1
+fi
+
+case $COMMAND in
+    start)
+        echo "🚀 Starting UOLJudge..."
+        docker compose up -d
+        echo "✅ Services started!"
+        ;;
+    stop)
+        echo "🛑 Stopping UOLJudge..."
+        docker compose down
+        echo "✅ Services stopped!"
+        ;;
+    restart)
+        echo "🔄 Restarting UOLJudge..."
+        docker compose down
+        docker compose up -d
+        echo "✅ Services restarted!"
+        ;;
+    logs)
+        docker compose logs -f
+        ;;
+    init)
+        echo "🛠️  Initializing Database..."
+        echo "Waiting for database to be ready..."
+        sleep 10
+        docker compose exec app npx prisma migrate deploy
+        docker compose exec app npx prisma db seed
+        echo "✅ Database initialized!"
+        ;;
+    deploy)
+        echo "🚀 Starting Deployment..."
+        git pull origin main
+        docker compose build --no-cache
+        docker compose up -d
+        echo "Waiting for database..."
+        sleep 15
+        docker compose exec app npx prisma migrate deploy
+        echo "✅ Deployment complete!"
+        ;;
+    backup)
+        echo "💾 Creating Backup..."
+        FILENAME="backup_$(date +%Y%m%d_%H%M%S).sql"
+        docker compose exec db pg_dump -U admin uol_judge > "backups/$FILENAME"
+        echo "✅ Backup saved to backups/$FILENAME"
+        ;;
+    clean)
+        read -p "⚠️  WARNING: This will delete ALL data. Are you sure? (y/N) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo "🧹 Cleaning up..."
+            docker compose down
+            docker system prune -a --volumes -f
+            sudo rm -rf ./pg-data
+            echo "✅ Cleanup complete!"
+        else
+            echo "❌ Cancelled."
+        fi
+        ;;
+    help)
+        show_help
+        ;;
+    *)
+        echo "❌ Unknown command: $COMMAND"
+        show_help
+        exit 1
+        ;;
+esac

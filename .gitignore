@@ -101,6 +101,4 @@ temp/
 *.iml
 .vscode-test/
 
-# Docker
-Dockerfile
-.dockerignore
+

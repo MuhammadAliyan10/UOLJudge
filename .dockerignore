@@ -1,0 +1,39 @@
+# CRITICAL: Prevent copying huge/local folders into the image
+node_modules
+.next
+.git
+.vscode
+.env
+.env*.local
+.env*
+!.env.example
+
+# Database & student data – NEVER copy into container
+pg-data
+postgres-data
+uploads
+public/uploads
+docker-data
+data
+
+# Build artifacts & caches
+dist
+build
+.out
+/.next
+/coverage
+/.turbo
+.turbo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+logs
+
+# OS / Editor garbage
+.DS_Store
+*.swp
+*~

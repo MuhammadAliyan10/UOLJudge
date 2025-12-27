@@ -1,12 +1,17 @@
 # UOLJudge
 
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Version](https://img.shields.io/badge/version-5.0-green.svg)
+![Status](https://img.shields.io/badge/status-stable-success.svg)
+![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
+
 **Enterprise-Grade Programming Contest Platform**
 
 The most reliable, feature-complete judging system for university programming contests. Built for high-availability environments where failure is not an option.
 
 ---
 
-## Why UOLJudge?
+## 🚀 Why UOLJudge?
 
 ### vs. Codeforces / HackerRank
 
@@ -31,7 +36,7 @@ The most reliable, feature-complete judging system for university programming co
 
 ---
 
-## Key Features
+## ✨ Key Features
 
 ### 🎯 Zero-Trust Security
 
@@ -69,94 +74,60 @@ The most reliable, feature-complete judging system for university programming co
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Docker Compose                        │
-├─────────────┬─────────────┬─────────────┬───────────────┤
-│   Next.js   │  WebSocket  │ PostgreSQL  │    Backup     │
-│    :3000    │    :3001    │    :5435    │   Service     │
-├─────────────┴─────────────┴─────────────┴───────────────┤
-│                    uol-network                           │
-└─────────────────────────────────────────────────────────┘
-```
+For a detailed look at the system architecture and data flow, please refer to [FLOW.md](FLOW.md).
 
-| Component      | Technology                      |
-| -------------- | ------------------------------- |
-| Frontend       | Next.js 14, React 18, shadcn/ui |
-| Backend        | Server Actions, Prisma ORM      |
-| Real-Time      | Custom WebSocket Server         |
-| Database       | PostgreSQL 15 (Alpine)          |
-| Infrastructure | Docker Compose                  |
+```mermaid
+graph TD
+    Browser[Web Browser] -->|HTTPS| LB[Load Balancer]
+    Mobile[Mobile Device] -->|HTTPS| LB
+    LB -->|HTTP| NextJS[Next.js App]
+    LB -->|WS| WS[WebSocket Server]
+    NextJS -->|Query| DB[(PostgreSQL)]
+```
 
 ---
 
-## Quick Start
+## 🛠️ Quick Start
+
+### Prerequisites
+
+- Docker & Docker Compose
+- Git
+
+### Installation
 
 ```bash
-# Clone
+# Clone the repository
 git clone https://github.com/MuhammadAliyan10/UOLJudge.git
 cd uol-judge
 
-# Deploy
-docker-compose up -d
+# Start the application using the CLI helper
+./bin/uol-judge start
 
-# Initialize
-docker-compose exec app npx prisma db push
-docker-compose exec app tsx prisma/seed.ts
-
-# Access
-open http://localhost:3000
+# Initialize database
+./bin/uol-judge init
 ```
 
 **Default Login:** `admin` / `uol0512`
 
----
-
-## Performance
-
-| Metric             | Value            |
-| ------------------ | ---------------- |
-| Concurrent Teams   | 100+             |
-| WebSocket Latency  | < 100ms          |
-| Leaderboard Update | O(1)             |
-| DB Connection Pool | 200 max          |
-| Auto-Backup        | Every 10 minutes |
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ---
 
-## Security Features
+## 🤝 Contributing
 
-- ✅ JWT authentication with production validation
-- ✅ bcrypt password hashing
-- ✅ Zero-trust role isolation
-- ✅ Device session management
-- ✅ Path traversal protection
-- ✅ Contest registration locking
-- ✅ Cascade delete prevention
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to get started.
 
----
+## 🔒 Security
 
-## Documentation
+For security policy and reporting vulnerabilities, please refer to [SECURITY.md](SECURITY.md).
 
-- [Deployment Guide](DEPLOYMENT.md) — Production setup instructions
-- [Prisma Schema](prisma/schema.prisma) — Database models
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## Author
-
-**Muhammad Aliyan**
-Lead Architect & Systems Engineer
-University of Lahore
-
----
-
-## License
-
-MIT License — Free for educational and commercial use.
-
----
-
-**UOLJudge V4.0 — When the network fails, the contest never does.**
+**UOLJudge V5.0 — When the network fails, the contest never does.**
